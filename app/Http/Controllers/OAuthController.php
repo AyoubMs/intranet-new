@@ -41,13 +41,6 @@ class OAuthController extends Controller
 
         auth()->login($user, true);
         Redis::set(Redis::get('token'), json_encode($user));
-//        Http::withHeaders(['Accept' => 'application/json', 'X-XSRF-TOKEN' => Redis::get('token')])->retry(3, 100, function (Exception $exception, PendingRequest $request) {
-//            return $exception instanceof ConnectionException;
-//        })->post('http://localhost:8000/login', [
-//                'email' => $user->email,
-//                'name' => $user->name,
-//                'password' => null
-//        ]);
         return redirect()->to('http://localhost:3000/dashboard')->header('user', $user);
     }
 }
