@@ -44,4 +44,9 @@ class User extends Authenticatable
         'password' => 'hashed',
     ];
 
+    public function manager()
+    {
+        return $this->hasOne(User::class, 'manager_id');
+    }
+
 }
