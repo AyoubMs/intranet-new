@@ -14,6 +14,7 @@ return new class extends Migration
         Schema::create('operations', function (Blueprint $table) {
             $table->id();
             $table->string('name')->index();
+            $table->boolean('active')->index();
             $table->timestamps();
         });
     }

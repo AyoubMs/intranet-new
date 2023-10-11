@@ -13,16 +13,26 @@ class OperationSeeder extends Seeder
      */
     public function run(): void
     {
-        $operations = ['LEBARA-France', 'ORTEL Allemagne', 'WORLDLINE',
+        $activeOperations = ['LEBARA-France', 'ORTEL Allemagne', 'WORLDLINE',
             'LEBARA-Allemagne', 'SCARLET', 'ORTEL Belgique', 'TELENET', 'LFM',
-            'BASE', 'LEBARA', 'CORONA DIRECT', 'UNIT-T',
-            'BOFROST', 'MKB', 'SIP Communication', 'ENGIE',
+            'LEBARA', 'UNIT-T', 'BOFROST', 'MKB', 'SIP Communication', 'ENGIE',
             'VHC', 'ENECO', 'DIRECTION', 'BAS', 'De Wilde & Baele', 'SOGEDES',
             'HYTECH', 'Direction', 'TUI FLY'];
+        $inactiveOperations = ['BASE', 'CORONA DIRECT'];
 
-        foreach ($operations as $operation) {
+        Operation::truncate();
+
+        foreach ($activeOperations as $operation) {
             Operation::factory()->create([
-                'name' => $operation
+                'name' => $operation,
+                'active' => true,
+            ]);
+        }
+
+        foreach ($inactiveOperations as $inactiveOperation) {
+            Operation::factory()->create([
+                'name' => $inactiveOperation,
+                'active' => false,
             ]);
         }
     }

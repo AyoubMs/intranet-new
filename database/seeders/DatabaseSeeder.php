@@ -3,25 +3,36 @@
 namespace Database\Seeders;
 
 // use Illuminate\Database\Console\Seeds\WithoutModelEvents;
+use App\Models\Department;
 use App\Models\Language;
 use App\Models\MotifDepart;
+use App\Models\Operation;
 use App\Models\Role;
+use App\Models\TeamType;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 
 class DatabaseSeeder extends Seeder
 {
+    public function getDataFromDB($func, $path)
+    {
+        $csvData = fopen($path, 'r');
+        $transRow = true;
+
+        while (($data = fgetcsv($csvData, 555, ',')) !== false) {
+            if (!$transRow) {
+                $func($data);
+            }
+            $transRow = false;
+        }
+        fclose($csvData);
+    }
+
     /**
      * Seed the application's database.
      */
     public function run(DepartmentSeeder $departmentSeeder, LanguageSeeder $languageSeeder, MotifDepartSeeder $motifDepartSeeder, OperationSeeder $operationSeeder, RoleSeeder $roleSeeder, TeamTypeSeeder $teamTypeSeeder): void
     {
-        // \App\Models\User::factory(10)->create();
-
-        // \App\Models\User::factory()->create([
-        //     'name' => 'Test User',
-        //     'email' => 'test@example.com',
-        // ]);
         $departmentSeeder->run();
         $languageSeeder->run();
         $motifDepartSeeder->run();
@@ -29,54 +40,69 @@ class DatabaseSeeder extends Seeder
         $roleSeeder->run();
         $teamTypeSeeder->run();
 
-        $csvData = fopen(storage_path() . '\app\public\users.csv', 'r');
-        $transRow = true;
+        $allUsersPath = storage_path() . '\app\public\users.csv';
+        $worldLineUsers = storage_path() . '\app\public\users_wl.csv';
 
-        while (($data = fgetcsv($csvData, 555, ',')) !== false) {
+        $fillUsersWithNoRelations = function ($data) {
+            $user = User::factory()->create([
+                'matricule' => $data[2],
+                'first_name' => $data[3],
+                'last_name' => $data[4],
+                'date_naissance' => $data[5] === "" ? null : $data[5],
+                'Sexe' => $data[6],
+                'date_entree_formation' => $data[8] === "" ? null : $data[8],
+                'date_entree_production' => $data[9] === "" ? null : $data[9],
+                'date_depart' => $data[10] === '' ? null : $data[10],
+                'language_id' => Language::where('name', $data[13])->first()->id ?? null,
+                'motif_depart_id' => MotifDepart::where('name', $data[15])->first()->id ?? null,
+            ]);
+            if (str_contains($data[7], 'reporting')) {
+                $user->role_id = Role::where('name', 'like', '%reporting%')->first()->id;
+                $user->save();
+            } else if (!!Role::where('name', $data[7])->first()) {
+                $user->role_id = Role::where('name', $data[7])->first()->id;
+                $user->save();
+            } else {
+                $user->role_id = 1;
+                $user->save();
+            }
+        };
+
+        $fillUsersWithManagers = function ($data) {
+            $firstName = substr($data[27], 0, strpos($data[27], ' '));
+            $lastName = substr($data[27], strpos($data[27], ' ') + 1);
+            if (!!$userFromCSV = User::where(['first_name' => $firstName, 'last_name' => $lastName])->first()) {
+                $user = User::where('matricule', $data[2])->first();
+                $user->manager_id = $userFromCSV->id;
+                $user->save();
+            }
+        };
+
+        $fillUsersWithOperations = function ($data) {
 //            dd($data);
-            if (!$transRow) {
-//                dd($data);
-//                if ($data[2] === 'ENNADI' and $data[3] === 'Mohamed') {
-//                    dd($data[6], $data, Role::where('name', $data[6])->first()->id);
-//                }
-                $user = User::factory()->create([
-                    'matricule' => $data[1],
-                    'first_name' => $data[2],
-                    'last_name' => $data[3],
-                    'date_naissance' => $data[4] === "" ? null : $data[4],
-                    'Sexe' => $data[5],
-                    'date_entree_formation' => $data[7] === "" ? null : $data[7],
-                    'date_depart' => $data[9] === '' ? null : $data[7],
-                    'language_id' => Language::where('name', $data[11])->first()->id ?? null,
-                    'motif_depart_id' => MotifDepart::where('name', $data[13])->first()->id ?? null,
-                ]);
-                if (str_contains($data[6], 'reporting')) {
-                    $user->role_id = Role::where('name', 'like', '%reporting%')->first()->id;
-                    $user->save();
-                } else if (!!Role::where('name', $data[6])->first()) {
-                    $user->role_id = Role::where('name', $data[6])->first()->id;
-                    $user->save();
-                }
+            $user = User::where('matricule', $data[2])->first();
+            if (in_array($data[26], Operation::all()->pluck('name')->toArray())) {
+                $user->operation_id = Operation::where('name', $data[26])->first()->id;
+                $user->save();
+            } else if (in_array($data[26], Department::all()->pluck('name')->toArray())) {
+                $user->department_id = Department::where('name', $data[26])->first()->id;
+                $user->save();
             }
-            $transRow = false;
-        }
-        fclose($csvData);
+        };
 
-        $csvData = fopen(storage_path() . '\app\public\users.csv', 'r');
-        $transRow = true;
-        while (($data = fgetcsv($csvData, 555, ',')) !== false) {
-            if (!$transRow) {
-                $firstName = substr($data[25], 0, strpos($data[25], ' '));
-                $lastName = substr($data[25], strpos($data[25], ' ') + 1);
-                if (!! $userFromCSV = User::where(['first_name' => $firstName, 'last_name' => $lastName])->first()) {
-                    $user = User::where('matricule', $data[1])->first();
-                    $user->manager_id = $userFromCSV->id;
-                    $user->save();
-                }
+        $fillUsersWithTeamTypes = function ($data) {
+            $user = User::where('matricule', $data[1])->first();
+            if (!TeamType::where('name', $data[9])->first()) {
+                dd(TeamType::where('name', $data[9])->first(), $data[9]);
             }
-            $transRow = false;
-        }
-        fclose($csvData);
+            $user->team_type_id = TeamType::where('name', $data[9])->first()->id;
+            $user->role_id = Role::where('name', $data[8])->first()->id;
+            $user->save();
+        };
 
+        $this->getDataFromDB($fillUsersWithNoRelations, $allUsersPath);
+        $this->getDataFromDB($fillUsersWithOperations, $allUsersPath);
+        $this->getDataFromDB($fillUsersWithManagers, $allUsersPath);
+        $this->getDataFromDB($fillUsersWithTeamTypes, $worldLineUsers);
     }
 }

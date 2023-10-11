@@ -13,8 +13,11 @@ class LanguageSeeder extends Seeder
      */
     public function run(): void
     {
-        $languages = ['Allemand', 'Français', 'Anglais', 'Dutch', 'Espagnol', 'Italien', 'Français/Anglais', 'Russe', 'IT', 'Arabe', 'français',
-            'Portugais', 'Roumain', 'Polonais'];
+        $languages = ['Français/Anglais', 'Dutch', 'Français', 'Allemand',
+            'Espagnol', 'Italien', 'Italien/Anglais', 'Russe', 'Anglais',
+            'Dutch/Français', 'IT', 'Arabe', 'français', 'Portugais',
+            'Anglais/Français', 'Roumain', 'Polonais', 'Français/Portugais',
+            'Allemand/Français'];
 
         foreach ($languages as $language) {
             Language::factory()->create([

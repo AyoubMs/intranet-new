@@ -21,12 +21,14 @@ return new class extends Migration
             $table->string('phone')->index()->nullable();
             $table->unsignedBigInteger('role_id')->nullable()->index();
             $table->date('date_entree_formation')->index()->nullable();
+            $table->date('date_entree_production')->index()->nullable();
             $table->date('date_depart')->index()->nullable();
             $table->unsignedBigInteger('language_id')->nullable()->index();
             $table->unsignedBigInteger('motif_depart_id')->nullable()->index();
             $table->unsignedBigInteger('manager_id')->nullable()->index();
             $table->unsignedBigInteger('operation_id')->nullable()->index();
             $table->unsignedBigInteger('department_id')->nullable()->index();
+            $table->unsignedBigInteger('team_type_id')->nullable()->index();
             $table->string('cnss_number')->index()->nullable();
             $table->string('email')->unique()->index()->nullable();
             $table->timestamp('email_verified_at')->nullable();

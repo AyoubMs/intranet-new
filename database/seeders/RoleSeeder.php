@@ -48,7 +48,7 @@ class RoleSeeder extends Seeder
             'Full Stack Javascript Developer', 'Chargée de recrutement',
             'Developpeur', 'Stagiaire Assistante de Direction',
             'Coordinatrice Qualité Formation',
-            'Chargé de planification et statistiques'];
+            'Chargé de planification et statistiques', 'Expert métier FR', 'Expert métier NL', 'Agent FR', 'Agent NL'];
 
         foreach ($profiles as $profile) {
             Role::factory()->create([

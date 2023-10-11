@@ -23,24 +23,33 @@ class OAuthController extends Controller
 {
     public function redirect(Request $request)
     {
-        Redis::set('token', $request->get('token'));
-        return Socialite::driver('azure')->redirect();
+        $token = $request->get('token');
+        return Socialite::driver('azure')->with(['state' => "token=$token"])->redirect();
     }
 
     public function callback(Request $request)
     {
+        $state = $request->input('state');
+        parse_str($state, $result);
         $azureUser = Socialite::driver('azure')->stateless()->user();
-        $user = User::where(['email' => $azureUser->getEmail()])->first();
-        if ($user === null) {
-            $user = User::firstOrCreate([
+        $name = $azureUser->getName();
+        $lastName = substr($name, 0, strpos($name, ' '));
+        $firstName = substr($name, strpos($name, ' ') + 1);
+        if ($user = User::where(['first_name' => $firstName, 'last_name' => $lastName])->first()) {
+            $user->email = $azureUser->getEmail();
+            $user->provider_id = $azureUser->getId();
+            $user->save();
+        } else {
+            User::factory()->create([
+                'first_name' => $firstName,
+                'last_name' => $lastName,
                 'email' => $azureUser->getEmail(),
-                'name' => $azureUser->getName()
+                'provider_id' => $azureUser->getId()
             ]);
         }
-        $user->provider_id = $azureUser->getId();
-
         auth()->login($user, true);
-        Redis::set(Redis::get('token'), json_encode($user));
-        return redirect()->to('http://localhost:3000/dashboard')->header('user', $user);
+        Redis::set($result['token'], json_encode($user));
+
+        return redirect()->to('http://localhost:3000/dashboard');
     }
 }

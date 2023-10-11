@@ -1,6 +1,9 @@
 <?php
 
 
+use App\Http\Controllers\DataController;
+use App\Models\Operation;
+use App\Models\Role;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Session;
@@ -24,9 +27,7 @@ use Illuminate\Support\Facades\Redis;
 Route::get('/', function () {
     return ['Laravel' => app()->version()];
 });
-//
-Route::get('/user', function(Request $request) {
-    return Redis::get(Redis::get('token'));
-});
+
+Route::post('/data', [DataController::class, 'getData']);
 
 require __DIR__.'/auth.php';

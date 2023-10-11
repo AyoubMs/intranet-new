@@ -11,7 +11,11 @@ use Laravel\Sanctum\HasApiTokens;
 class User extends Authenticatable
 {
     use HasApiTokens, HasFactory, Notifiable;
-    protected $guarded=[];
+
+    protected $table = 'users';
+    protected $guarded = [];
+
+    protected $with = ['team_type'];
 
     /**
      * The attributes that are mass assignable.
@@ -44,9 +48,38 @@ class User extends Authenticatable
         'password' => 'hashed',
     ];
 
-    public function manager()
+    public function role()
     {
-        return $this->hasOne(User::class, 'manager_id');
+        return $this->belongsTo(Role::class);
     }
 
+    public function language()
+    {
+        return $this->belongsTo(Language::class);
+    }
+
+    public function motif()
+    {
+        return $this->belongsTo(MotifDepart::class, 'motif_depart_id');
+    }
+
+    public function manager()
+    {
+        return $this->belongsTo(User::class, 'manager_id');
+    }
+
+    public function operation()
+    {
+        return $this->belongsTo(Operation::class);
+    }
+
+    public function department()
+    {
+        return $this->belongsTo(Department::class);
+    }
+
+    public function team_type()
+    {
+        return $this->belongsTo(TeamType::class, 'team_type_id');
+    }
 }

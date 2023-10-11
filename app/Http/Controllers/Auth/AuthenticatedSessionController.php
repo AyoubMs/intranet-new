@@ -7,6 +7,7 @@ use App\Http\Requests\Auth\LoginRequest;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Redis;
 
 class AuthenticatedSessionController extends Controller
 {
@@ -17,7 +18,7 @@ class AuthenticatedSessionController extends Controller
     {
         $request->authenticate();
 
-        $request->session()->regenerate();
+//        $request->session()->regenerate();
 
         return response()->noContent();
     }
@@ -28,10 +29,14 @@ class AuthenticatedSessionController extends Controller
     public function destroy(Request $request)
     {
         Auth::guard('web')->logout();
-
-        $request->session()->invalidate();
-
-        $request->session()->regenerateToken();
+//
+//        $request->session()->invalidate();
+//        info($request->token);
+        foreach (Redis::keys('*') as $key) {
+            if (str_contains(Redis::get($key), json_encode(json_decode($request->user)->user))) {
+                Redis::del($key);
+            }
+        }
 
         return response()->noContent();
     }

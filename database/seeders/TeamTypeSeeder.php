@@ -15,7 +15,7 @@ class TeamTypeSeeder extends Seeder
     {
         $team_types = ['TECH FR', 'EXPERT TEAM', 'SAVE', 'Onboarding',
             'KIA SERVICE DESK', 'Dispute', 'Customer advocate', 'CANCELATION',
-            'ALICE TEAM', 'ADM FR', 'TECH NL', 'Outbound', 'ADM NL',
+            'ALICE TEAM', 'ADM FR', 'TECH NL', 'Outbound', 'ADM NL', 'Outbound (FND)',
             'BACK OFFICE'];
 
         foreach ($team_types as $team_type) {
