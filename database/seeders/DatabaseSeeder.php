@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 // use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use App\Models\Department;
+use App\Models\FamilySituation;
 use App\Models\Language;
 use App\Models\MotifDepart;
 use App\Models\Operation;
@@ -31,7 +32,7 @@ class DatabaseSeeder extends Seeder
     /**
      * Seed the application's database.
      */
-    public function run(DepartmentSeeder $departmentSeeder, LanguageSeeder $languageSeeder, MotifDepartSeeder $motifDepartSeeder, OperationSeeder $operationSeeder, RoleSeeder $roleSeeder, TeamTypeSeeder $teamTypeSeeder): void
+    public function run(DepartmentSeeder $departmentSeeder, LanguageSeeder $languageSeeder, MotifDepartSeeder $motifDepartSeeder, OperationSeeder $operationSeeder, RoleSeeder $roleSeeder, TeamTypeSeeder $teamTypeSeeder, IdentityTypeSeeder $identityTypeSeeder, NationalitySeeder $nationalitySeeder, SourcingTypeSeeder $sourcingTypeSeeder, FamilySituationSeeder $familySituationSeeder): void
     {
         $departmentSeeder->run();
         $languageSeeder->run();
@@ -39,9 +40,14 @@ class DatabaseSeeder extends Seeder
         $operationSeeder->run();
         $roleSeeder->run();
         $teamTypeSeeder->run();
+        $identityTypeSeeder->run();
+        $nationalitySeeder->run();
+        $sourcingTypeSeeder->run();
+        $familySituationSeeder->run();
 
         $allUsersPath = storage_path() . '\app\public\users.csv';
         $worldLineUsers = storage_path() . '\app\public\users_wl.csv';
+        $soldesPath = storage_path() . '\app\public\solde';
 
         $fillUsersWithNoRelations = function ($data) {
             $user = User::factory()->create([
@@ -53,14 +59,16 @@ class DatabaseSeeder extends Seeder
                 'date_entree_formation' => $data[8] === "" ? null : $data[8],
                 'date_entree_production' => $data[9] === "" ? null : $data[9],
                 'date_depart' => $data[10] === '' ? null : $data[10],
-                'language_id' => Language::where('name', $data[13])->first()->id ?? null,
+                'active' => ($data[10] === ''),
+                'primary_language_id' => Language::where('name', $data[12])->first()->id ?? null,
+                'secondary_language_id' => Language::where('name', $data[14])->first()->id ?? null,
                 'motif_depart_id' => MotifDepart::where('name', $data[15])->first()->id ?? null,
             ]);
             if (str_contains($data[7], 'reporting')) {
                 $user->role_id = Role::where('name', 'like', '%reporting%')->first()->id;
                 $user->save();
             } else if (!!Role::where('name', $data[7])->first()) {
-                $user->role_id = Role::where('name', $data[7])->first()->id;
+                $user->role_id = Role::where('name', 'like', "%$data[7]%")->first()->id;
                 $user->save();
             } else {
                 $user->role_id = 1;
@@ -100,9 +108,18 @@ class DatabaseSeeder extends Seeder
             $user->save();
         };
 
+        $fillUsersWithSoldes = function ($data) {
+            $user = User::where('matricule', $data[2])->first();
+
+            $user->solde_cp = (double) $data[11];
+            $user->solde_rjf = (double) $data[15];
+            $user->save();
+        };
+
         $this->getDataFromDB($fillUsersWithNoRelations, $allUsersPath);
         $this->getDataFromDB($fillUsersWithOperations, $allUsersPath);
         $this->getDataFromDB($fillUsersWithManagers, $allUsersPath);
         $this->getDataFromDB($fillUsersWithTeamTypes, $worldLineUsers);
+        $this->getDataFromDB($fillUsersWithSoldes, $soldesPath);
     }
 }

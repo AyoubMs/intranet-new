@@ -15,7 +15,7 @@ class User extends Authenticatable
     protected $table = 'users';
     protected $guarded = [];
 
-    protected $with = ['team_type', 'role', 'operation', 'department', 'language'];
+    protected $with = ['team_type', 'role', 'operation', 'department', 'primaryLanguage', 'secondaryLanguage', 'identityType'];
 
     /**
      * The attributes that are mass assignable.
@@ -48,14 +48,39 @@ class User extends Authenticatable
         'password' => 'hashed',
     ];
 
+    public function familySituation()
+    {
+        $this->belongsTo(FamilySituation::class, 'family_situation_id');
+    }
+
+    public function sourcingType()
+    {
+        $this->belongsTo(User::class, 'sourcing_type_id');
+    }
+
+    public function nationality()
+    {
+        $this->belongsTo(Nationality::class, 'nationality_id');
+    }
+
+    public function identityType()
+    {
+        return $this->belongsTo(IdentityType::class, 'identity_type_id');
+    }
+
     public function role()
     {
         return $this->belongsTo(Role::class);
     }
 
-    public function language()
+    public function primaryLanguage()
     {
-        return $this->belongsTo(Language::class);
+        return $this->belongsTo(Language::class, 'primary_language_id');
+    }
+
+    public function secondaryLanguage()
+    {
+        return $this->belongsTo(Language::class, 'secondary_language_id');
     }
 
     public function motif()
