@@ -36,14 +36,14 @@ class OAuthController extends Controller
         $lastName = substr($name, 0, strpos($name, ' '));
         $firstName = substr($name, strpos($name, ' ') + 1);
         if ($user = User::where(['first_name' => $firstName, 'last_name' => $lastName])->first()) {
-            $user->email = $azureUser->getEmail();
+            $user->email_1 = $azureUser->getEmail();
             $user->provider_id = $azureUser->getId();
             $user->save();
         } else {
             User::factory()->create([
                 'first_name' => $firstName,
                 'last_name' => $lastName,
-                'email' => $azureUser->getEmail(),
+                'email_1' => $azureUser->getEmail(),
                 'provider_id' => $azureUser->getId()
             ]);
         }

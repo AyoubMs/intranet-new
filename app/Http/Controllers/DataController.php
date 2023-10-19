@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Jobs\LoadDataFromDB;
+use App\Models\Comment;
 use App\Models\FamilySituation;
 use App\Models\IdentityType;
 use App\Models\Language;
@@ -10,19 +12,20 @@ use App\Models\Operation;
 use App\Models\Role;
 use App\Models\SourcingType;
 use App\Models\User;
+use Illuminate\Http\Client\Response;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Redis;
+use Illuminate\Support\Facades\Validator;
 use stdClass;
 
 class DataController extends Controller
 {
     function getOperationsWithSupervisors($status, $search, $active)
     {
-        $operations = Operation::where('name', 'like', "%$search%");
         if ($status !== 'all_users') {
-            $operations = $operations->get()->isEmpty() ? Operation::where('active', $active)->get() : $operations->where('active', $active)->get();
+            $operations = Operation::where('name', 'like', "%$search%")->get()->isEmpty() ? Operation::where('active', $active)->get() : Operation::where('name', 'like', "%$search%")->where('active', $active)->get();
         } else {
-            $operations = $operations->get();
+            $operations = Operation::where('name', 'like', "%$search%")->get();
         }
 
         $output = [];
@@ -30,18 +33,18 @@ class DataController extends Controller
             $obj = new StdClass();
             $obj->operation = $operation->name;
             if ($status !== 'all_users') {
-                $queryFirstName = $operation->users()->where('active', $active)->where('role_id', Role::where('name', 'Superviseur')->first()->id)->where('first_name', 'like', "%$search%");
-                $queryLastName = $operation->users()->where('active', $active)->where('role_id', Role::where('name', 'Superviseur')->first()->id)->where('first_name', 'like', "%$search%");
+                $queryFirstName = $operation->users()->where('active', $active)->where('role_id', Role::where('name', 'Superviseur')->first()->id)->where('first_name', 'like', "%$search%")->get();
+                $queryLastName = $operation->users()->where('active', $active)->where('role_id', Role::where('name', 'Superviseur')->first()->id)->where('last_name', 'like', "%$search%")->get();
             } else {
-                $queryFirstName = $operation->users()->where('role_id', Role::where('name', 'Superviseur')->first()->id)->where('first_name', 'like', "%$search%");
-                $queryLastName = $operation->users()->where('role_id', Role::where('name', 'Superviseur')->first()->id)->where('first_name', 'like', "%$search%");
+                $queryFirstName = $operation->users()->where('role_id', Role::where('name', 'Superviseur')->first()->id)->where('first_name', 'like', "%$search%")->get();
+                $queryLastName = $operation->users()->where('role_id', Role::where('name', 'Superviseur')->first()->id)->where('last_name', 'like', "%$search%")->get();
             }
-            if (!$queryFirstName->get()->isEmpty() && !$queryLastName->get()->isEmpty()) {
-                $obj->users = $queryFirstName->get()->merge($queryLastName->get())->unique();
-            } else if ($queryFirstName->get()->isEmpty()) {
-                $obj->users = $queryLastName->get();
-            } else if ($queryLastName->get()->isEmpty()) {
-                $obj->users = $queryFirstName->get();
+            if (!$queryFirstName->isEmpty() && !$queryLastName->isEmpty()) {
+                $obj->users = $queryFirstName->merge($queryLastName)->unique();
+            } else if ($queryFirstName->isEmpty()) {
+                $obj->users = $queryLastName;
+            } else if ($queryLastName->isEmpty()) {
+                $obj->users = $queryFirstName;
             } else {
                 $obj->users = $operation->users()->where('role_id', Role::where('name', 'Superviseur')->first()->id)->get();
             }
@@ -73,7 +76,6 @@ class DataController extends Controller
 
     function getQueriesByStatusAndNamesPartial($operation_ids, $role_ids, $language_ids, $status, $manager_ids, $active, $dateDebut, $dateFin)
     {
-        $output = [];
         if ($status !== 'all_users') {
             $output = [
                 0 => User::whereNull('date_entree_production')->where('active', $active)->whereIn('manager_id', $manager_ids)->whereIn('operation_id', $operation_ids)->whereIn('role_id', $role_ids)->whereIn('language_id', $language_ids)->paginate(),
@@ -165,8 +167,6 @@ class DataController extends Controller
 
     function getQueriesByStatus($operation_ids, $role_ids, $language_ids, $status, $active, $dateDebut, $dateFin)
     {
-        $output = [];
-
         if ($status !== 'all_users') {
             $output = [
                 0 => User::where('active', $active)->whereIn('operation_id', $operation_ids)->whereIn('role_id', $role_ids)->whereIn('language_id', $language_ids)->whereNull('date_entree_production')->paginate(),
@@ -318,7 +318,6 @@ class DataController extends Controller
 
         $objectToTake = [];
         foreach ($this->bundleConditionsAndQueries($operation_ids, $role_ids, $language_ids, $status, $names, $active, $body['dateDebut'], $body['dateFin']) as $key => $obj) {
-            info($key);
             if ($obj->condition) {
                 $objectToTake = $obj->query;
             }
@@ -332,23 +331,88 @@ class DataController extends Controller
         return User::where('matricule', 'like', "%$search%")->first();
     }
 
-    function getIdentities() {
+    function getDataByType($type, $query) {
+        dispatch(new LoadDataFromDB($query, $type));
+        return json_decode(Redis::get($type));
+    }
 
+    function addUser($body, $request) {
+        $validator = Validator::make($body, [
+            'matricule' => 'required|unique:users|min:5',
+            'email_1' => 'required|email|unique:users',
+            'nom' => 'required|min:2',
+            'email_2' => 'nullable|email',
+            'prenom' => 'required|min:2',
+            'date_mep' => 'nullable|date',
+            'sexe' => 'required',
+            'date_entree_formation' => 'nullable|date',
+            'type_identite' => 'nullable',
+            'num_identite' => 'nullable',
+            'langue_principale' => 'nullable',
+            'nationalite' => 'nullable',
+            'date_naissance' => 'nullable|date',
+            'sourcing_type' => 'nullable',
+            'sourcing_provider' => 'nullable',
+            'situation_familiale' => 'nullable',
+            'phone_1' => 'nullable',
+            'photo' => 'nullable',
+            'phone_2' => 'nullable',
+            'nombre_enfants' => 'nullable',
+            'cnss_number' => 'nullable',
+            'address' => 'nullable',
+            'comment' => 'nullable'
+        ]);
+        if($validator->fails()) {
+            return $validator->messages()->toArray();
+        } else {
+            info(Redis::get($request->headers->get('Uuid')));
+            User::factory()->create([
+                'matricule' => $body['matricule'],
+                'email_1' => $body['email_1'],
+                'first_name' => $body['nom'],
+                'email_2' => $body['email_2'],
+                'last_name' => $body['prenom'],
+                'date_entree_production' => $body['date_mep'],
+                'Sexe' => $body['sexe'] === 'homme' ? 'H' : 'F',
+                'date_entree_formation' => $body['date_entree_formation'],
+                'identity_type_id' => IdentityType::where('name', 'like', $body['type_identite'])->first()->id,
+                'identity_num' => $body['num_identite'],
+                'primary_language_id' => Language::where('name', 'like', "%".$body['langue_principale']."%")->first()->id,
+                'nationality_id' => Nationality::where('name', 'like', $body['nationalite'])->first()->id,
+                'date_naissance' => $body['date_naissance'],
+                'sourcing_type_id' => SourcingType::where('name', 'like', "%".$body['sourcing_provider']."%")->first()->id,
+                'situation_familiale' => $body['situation_familiale'],
+                'phone_1' => $body['phone_1'],
+                'photo' => $body['photo'],
+                'phone_2' => $body['phone_2'],
+                'nombre_enfants' => $body['nombre_enfants'],
+                'cnss_number' => $body['cnss_number'],
+                'address' => $body['address'],
+                'comment_id' => Comment::factory()->create(['comment' => $body['comment']])->id,
+                'creator_id' => json_decode(Redis::get($request->headers->get('Uuid')))->id,
+                'solde_cp' => 0,
+                'solde_rjf' => 0
+            ]);
+            return 'done';
+        }
     }
 
     public function getData(Request $request)
     {
         switch ($request['type']) {
+            case 'add_user':
+                return $this->addUser($request->body, $request);
+                break;
             case 'family_situations':
-                return FamilySituation::pluck('name');
+                return $this->getDataByType('family_situations', FamilySituation::pluck('name'));
             case 'sourcing_providers':
-                return SourcingType::select('name')->pluck('name');
+                return $this->getDataByType('sourcing_providers', SourcingType::select('name')->pluck('name'));
             case 'nationalities':
-                return Nationality::where('name', 'like', "%%")->pluck('name');
+                return $this->getDataByType('nationalities', Nationality::pluck('name'));
             case 'sourcing_types':
-                return SourcingType::select('type')->distinct()->pluck('type');
+                return $this->getDataByType('sourcing_types', SourcingType::select('type')->distinct()->pluck('type'));
             case 'identities':
-                return IdentityType::all();
+                return $this->getDataByType('identities', IdentityType::pluck('name'));
             case 'userByRegNumber':
                 if ($request['search'] !== '' && !is_null($request['search'])) {
                     return $this->getUser($request['search']);

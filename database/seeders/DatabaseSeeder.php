@@ -15,20 +15,6 @@ use Illuminate\Database\Seeder;
 
 class DatabaseSeeder extends Seeder
 {
-    public function getDataFromDB($func, $path)
-    {
-        $csvData = fopen($path, 'r');
-        $transRow = true;
-
-        while (($data = fgetcsv($csvData, 555, ',')) !== false) {
-            if (!$transRow) {
-                $func($data);
-            }
-            $transRow = false;
-        }
-        fclose($csvData);
-    }
-
     /**
      * Seed the application's database.
      */
@@ -40,7 +26,6 @@ class DatabaseSeeder extends Seeder
         $operationSeeder->run();
         $roleSeeder->run();
         $teamTypeSeeder->run();
-        $identityTypeSeeder->run();
         $nationalitySeeder->run();
         $sourcingTypeSeeder->run();
         $familySituationSeeder->run();
@@ -91,18 +76,16 @@ class DatabaseSeeder extends Seeder
             $user = User::where('matricule', $data[2])->first();
             if (in_array($data[26], Operation::all()->pluck('name')->toArray())) {
                 $user->operation_id = Operation::where('name', $data[26])->first()->id;
-                $user->save();
             } else if (in_array($data[26], Department::all()->pluck('name')->toArray())) {
                 $user->department_id = Department::where('name', $data[26])->first()->id;
-                $user->save();
             }
+            $creator_id = User::where('first_name', 'like', "%chahir%")->where('last_name', 'like', "%ayoub%")->first()->id;
+            $user->creator_id = $creator_id;
+            $user->save();
         };
 
         $fillUsersWithTeamTypes = function ($data) {
             $user = User::where('matricule', $data[1])->first();
-            if (!TeamType::where('name', $data[9])->first()) {
-                dd(TeamType::where('name', $data[9])->first(), $data[9]);
-            }
             $user->team_type_id = TeamType::where('name', $data[9])->first()->id;
             $user->role_id = Role::where('name', $data[8])->first()->id;
             $user->save();
@@ -116,10 +99,12 @@ class DatabaseSeeder extends Seeder
             $user->save();
         };
 
-        $this->getDataFromDB($fillUsersWithNoRelations, $allUsersPath);
-        $this->getDataFromDB($fillUsersWithOperations, $allUsersPath);
-        $this->getDataFromDB($fillUsersWithManagers, $allUsersPath);
-        $this->getDataFromDB($fillUsersWithTeamTypes, $worldLineUsers);
-        $this->getDataFromDB($fillUsersWithSoldes, $soldesPath);
+        Utils::getDataFromDB($fillUsersWithNoRelations, $allUsersPath);
+        Utils::getDataFromDB($fillUsersWithOperations, $allUsersPath);
+        Utils::getDataFromDB($fillUsersWithManagers, $allUsersPath);
+        Utils::getDataFromDB($fillUsersWithTeamTypes, $worldLineUsers);
+        Utils::getDataFromDB($fillUsersWithSoldes, $soldesPath);
+
+        $identityTypeSeeder->run();
     }
 }

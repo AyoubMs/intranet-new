@@ -21,6 +21,11 @@ return new class extends Migration
             $table->string('phone')->index()->nullable();
             $table->string('situation_familiale')->index()->nullable();
             $table->string('identity_num')->index()->nullable();
+            $table->string('phone_1')->index()->nullable();
+            $table->string('phone_2')->index()->nullable();
+            $table->string('photo')->index()->nullable();
+            $table->string('nombre_enfants')->index()->nullable();
+            $table->string('address')->index()->nullable();
             $table->double('solde_cp')->index()->nullable();
             $table->double('solde_rjf')->index()->nullable();
             $table->unsignedBigInteger('role_id')->nullable()->index();
@@ -31,7 +36,6 @@ return new class extends Migration
             $table->unsignedBigInteger('primary_language_id')->nullable()->index();
             $table->unsignedBigInteger('sourcing_type_id')->nullable()->index();
             $table->unsignedBigInteger('family_situation_id')->nullable()->index();
-            $table->unsignedBigInteger('identity_type_id')->nullable()->index();
             $table->unsignedBigInteger('nationality_id')->nullable()->index();
             $table->unsignedBigInteger('secondary_language_id')->nullable()->index();
             $table->unsignedBigInteger('motif_depart_id')->nullable()->index();
@@ -39,8 +43,11 @@ return new class extends Migration
             $table->unsignedBigInteger('operation_id')->nullable()->index();
             $table->unsignedBigInteger('department_id')->nullable()->index();
             $table->unsignedBigInteger('team_type_id')->nullable()->index();
+            $table->unsignedBigInteger('comment_id')->nullable()->index();
+            $table->unsignedBigInteger('creator_id')->nullable()->index();
             $table->string('cnss_number')->index()->nullable();
-            $table->string('email')->unique()->index()->nullable();
+            $table->string('email_1')->unique()->index()->nullable();
+            $table->string('email_2')->unique()->index()->nullable();
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password')->nullable();
             $table->string('provider_id')->nullable()->index();

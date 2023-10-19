@@ -15,7 +15,7 @@ class User extends Authenticatable
     protected $table = 'users';
     protected $guarded = [];
 
-    protected $with = ['team_type', 'role', 'operation', 'department', 'primaryLanguage', 'secondaryLanguage', 'identityType'];
+    protected $with = ['team_type', 'role', 'operation', 'department', 'primaryLanguage', 'secondaryLanguage', 'identityTypes', 'sourcingType', 'nationality', 'familySituation'];
 
     /**
      * The attributes that are mass assignable.
@@ -48,24 +48,34 @@ class User extends Authenticatable
         'password' => 'hashed',
     ];
 
+    public function creator()
+    {
+        return $this->belongsTo(User::class, 'creator_id');
+    }
+
+    public function comment()
+    {
+        return $this->hasOne(Comment::class);
+    }
+
     public function familySituation()
     {
-        $this->belongsTo(FamilySituation::class, 'family_situation_id');
+        return $this->belongsTo(FamilySituation::class, 'family_situation_id');
     }
 
     public function sourcingType()
     {
-        $this->belongsTo(User::class, 'sourcing_type_id');
+        return $this->belongsTo(User::class, 'sourcing_type_id');
     }
 
     public function nationality()
     {
-        $this->belongsTo(Nationality::class, 'nationality_id');
+        return $this->belongsTo(Nationality::class, 'nationality_id');
     }
 
-    public function identityType()
+    public function identityTypes()
     {
-        return $this->belongsTo(IdentityType::class, 'identity_type_id');
+        return $this->hasMany(IdentityType::class);
     }
 
     public function role()
