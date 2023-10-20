@@ -20,7 +20,6 @@ return new class extends Migration
             $table->string('Sexe')->index();
             $table->string('phone')->index()->nullable();
             $table->string('situation_familiale')->index()->nullable();
-            $table->string('identity_num')->index()->nullable();
             $table->string('phone_1')->index()->nullable();
             $table->string('phone_2')->index()->nullable();
             $table->string('photo')->index()->nullable();
@@ -47,7 +46,6 @@ return new class extends Migration
             $table->unsignedBigInteger('creator_id')->nullable()->index();
             $table->string('cnss_number')->index()->nullable();
             $table->string('email_1')->unique()->index()->nullable();
-            $table->string('email_2')->unique()->index()->nullable();
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password')->nullable();
             $table->string('provider_id')->nullable()->index();

@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('identity_types', function (Blueprint $table) {
             $table->id();
             $table->string('name')->index();
-            $table->string('identity_number')->index();
+            $table->string('identity_number')->index()->nullable();
             $table->unsignedBigInteger('user_id')->index();
             $table->timestamps();
         });

@@ -14,7 +14,7 @@ class SourcingTypeSeeder extends Seeder
     public function run(): void
     {
         $free_sourcing = ["Dutchies at work", "Dutch employees", "Moncallcenter.ma", "LinkedIn", "Réintégration", "CANDIDATURE SPONTANEE", "TIK TOK", "GEDMA", "Transfert NCC BARCELONE"];
-        $paid_sourcing = ["Multicibles", "Facebook", "Parrainage", "Menara.ma", "LinkedIn", "Ihssane House", "ANAPEC", "Recruit4Work", "AARRAS  Fouad", "INO", "SITE WEB", "TIK TOK", "ExpatWork", "ELJ"];
+        $paid_sourcing = ["Multicibles", "Facebook", "Parrainage", "Menara.ma", "LinkedIn", "Ihssane House", "ANAPEC", "Recruit4Work", "AARRAS Fouad", "INO", "SITE WEB", "TIK TOK", "ExpatWork", "ELJ"];
 
         foreach ($free_sourcing as $sourcing) {
             SourcingType::factory()->create([
