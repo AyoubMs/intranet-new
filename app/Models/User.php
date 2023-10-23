@@ -15,7 +15,7 @@ class User extends Authenticatable
     protected $table = 'users';
     protected $guarded = [];
 
-    protected $with = ['team_type', 'role', 'operation', 'department', 'primaryLanguage', 'secondaryLanguage', 'identityTypes', 'sourcingType', 'nationality', 'familySituation'];
+    protected $with = ['team_type', 'role', 'operations', 'department', 'primaryLanguage', 'secondaryLanguage', 'identityTypes', 'sourcingType', 'nationality', 'familySituation', 'managers'];
 
     /**
      * The attributes that are mass assignable.
@@ -47,6 +47,11 @@ class User extends Authenticatable
         'email_verified_at' => 'datetime',
         'password' => 'hashed',
     ];
+
+    public function operations()
+    {
+        return $this->belongsToMany(Operation::class);
+    }
 
     public function creator()
     {
@@ -98,14 +103,14 @@ class User extends Authenticatable
         return $this->belongsTo(MotifDepart::class, 'motif_depart_id');
     }
 
-    public function manager()
+    public function users()
     {
-        return $this->belongsTo(User::class, 'manager_id');
+        return $this->belongsToMany(User::class, 'manager_user', 'manager_id', 'user_id');
     }
 
-    public function operation()
+    public function managers()
     {
-        return $this->belongsTo(Operation::class);
+        return $this->belongsToMany(User::class, 'manager_user','user_id', 'manager_id');
     }
 
     public function department()

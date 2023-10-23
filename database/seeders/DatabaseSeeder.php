@@ -66,7 +66,7 @@ class DatabaseSeeder extends Seeder
             $lastName = substr($data[27], strpos($data[27], ' ') + 1);
             if (!!$userFromCSV = User::where(['first_name' => $firstName, 'last_name' => $lastName])->first()) {
                 $user = User::where('matricule', $data[2])->first();
-                $user->manager_id = $userFromCSV->id;
+                $user->managers()->attach($userFromCSV->id);
                 $user->save();
             }
         };
@@ -75,7 +75,7 @@ class DatabaseSeeder extends Seeder
 //            dd($data);
             $user = User::where('matricule', $data[2])->first();
             if (in_array($data[26], Operation::all()->pluck('name')->toArray())) {
-                $user->operation_id = Operation::where('name', $data[26])->first()->id;
+                $user->operations()->attach(Operation::where('name', $data[26])->first()->id);
             } else if (in_array($data[26], Department::all()->pluck('name')->toArray())) {
                 $user->department_id = Department::where('name', $data[26])->first()->id;
             }
