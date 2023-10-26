@@ -63,6 +63,6 @@ class IdentityTypeSeeder extends Seeder
             $user->save();
         };
 
-        Utils::getDataFromDB($fillUsersWithMissingInfo, $usersPath);
+        Utils::getDataFromDBOrValidateInjectionFile($fillUsersWithMissingInfo, $usersPath);
     }
 }

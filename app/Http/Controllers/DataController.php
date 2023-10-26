@@ -7,6 +7,7 @@ use App\Models\Comment;
 use App\Models\FamilySituation;
 use App\Models\IdentityType;
 use App\Models\Language;
+use App\Models\MotifDepart;
 use App\Models\Nationality;
 use App\Models\Operation;
 use App\Models\Role;
@@ -76,10 +77,25 @@ class DataController extends Controller
     public function getData(Request $request)
     {
         switch ($request['type']) {
+            case null:
+//                $request->file('body')->store(storage_path('app\public'));
+                if($request->hasFile('file')) {
+                    $request->file('file')->storeAs('public/files', 'injection-file.xlsx');
+                    info("here");
+                }
+                break;
+            case 'deactivate_user':
+                return UserController::deactivateUser($request->body);
+            case 'motifs_depart':
+                return MotifDepart::pluck('name')->toArray();
+            case 'affect_user':
+                return UserController::affectUser($request->body);
             case 'edit_user':
                 return UserController::editUser($request->body, $request);
             case 'add_user':
                 return UserController::addUser($request->body, $request);
+            case 'operations':
+                return $this->getDataByType('operations', Operation::pluck('name'));
             case 'family_situations':
                 return $this->getDataByType('family_situations', FamilySituation::pluck('name'));
             case 'sourcing_providers':

@@ -38,9 +38,9 @@ return new class extends Migration
             $table->unsignedBigInteger('nationality_id')->nullable()->index();
             $table->unsignedBigInteger('secondary_language_id')->nullable()->index();
             $table->unsignedBigInteger('motif_depart_id')->nullable()->index();
+            $table->unsignedBigInteger('operation_id')->nullable()->index();
             $table->unsignedBigInteger('department_id')->nullable()->index();
             $table->unsignedBigInteger('team_type_id')->nullable()->index();
-            $table->unsignedBigInteger('comment_id')->nullable()->index();
             $table->unsignedBigInteger('creator_id')->nullable()->index();
             $table->string('cnss_number')->index()->nullable();
             $table->string('email_1')->unique()->index()->nullable();

@@ -9,14 +9,15 @@
         "ext-http": "*",
         "ext-json": "*",
         "ext-mongodb": "*",
+        "ext-redis": "*",
         "guzzlehttp/guzzle": "^7.8",
         "laravel/framework": "^10.10",
         "laravel/sanctum": "^3.2",
         "laravel/socialite": "^5.9",
         "laravel/tinker": "^2.8",
+        "phpoffice/phpspreadsheet": "*",
         "predis/predis": "*",
-        "socialiteproviders/microsoft-azure": "^5.1",
-        "ext-redis": "*"
+        "socialiteproviders/microsoft-azure": "^5.1"
     },
     "require-dev": {
         "fakerphp/faker": "^1.9.1",

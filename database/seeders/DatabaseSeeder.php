@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 // use Illuminate\Database\Console\Seeds\WithoutModelEvents;
+use App\Models\Comment;
 use App\Models\Department;
 use App\Models\FamilySituation;
 use App\Models\Language;
@@ -49,6 +50,10 @@ class DatabaseSeeder extends Seeder
                 'secondary_language_id' => Language::where('name', $data[14])->first()->id ?? null,
                 'motif_depart_id' => MotifDepart::where('name', $data[15])->first()->id ?? null,
             ]);
+            $comment = Comment::factory()->create([
+                'user_id' => $user->id,
+            ]);
+            $comment->save();
             if (str_contains($data[7], 'reporting')) {
                 $user->role_id = Role::where('name', 'like', '%reporting%')->first()->id;
                 $user->save();
@@ -76,6 +81,7 @@ class DatabaseSeeder extends Seeder
             $user = User::where('matricule', $data[2])->first();
             if (in_array($data[26], Operation::all()->pluck('name')->toArray())) {
                 $user->operations()->attach(Operation::where('name', $data[26])->first()->id);
+                $user->operation_id = Operation::where('name', $data[26])->first()->id;
             } else if (in_array($data[26], Department::all()->pluck('name')->toArray())) {
                 $user->department_id = Department::where('name', $data[26])->first()->id;
             }
@@ -99,11 +105,11 @@ class DatabaseSeeder extends Seeder
             $user->save();
         };
 
-        Utils::getDataFromDB($fillUsersWithNoRelations, $allUsersPath);
-        Utils::getDataFromDB($fillUsersWithOperations, $allUsersPath);
-        Utils::getDataFromDB($fillUsersWithManagers, $allUsersPath);
-        Utils::getDataFromDB($fillUsersWithTeamTypes, $worldLineUsers);
-        Utils::getDataFromDB($fillUsersWithSoldes, $soldesPath);
+        Utils::getDataFromDBOrValidateInjectionFile($fillUsersWithNoRelations, $allUsersPath);
+        Utils::getDataFromDBOrValidateInjectionFile($fillUsersWithOperations, $allUsersPath);
+        Utils::getDataFromDBOrValidateInjectionFile($fillUsersWithManagers, $allUsersPath);
+        Utils::getDataFromDBOrValidateInjectionFile($fillUsersWithTeamTypes, $worldLineUsers);
+        Utils::getDataFromDBOrValidateInjectionFile($fillUsersWithSoldes, $soldesPath);
 
         $identityTypeSeeder->run();
     }
