@@ -13,6 +13,7 @@ use App\Models\Operation;
 use App\Models\Role;
 use App\Models\SourcingType;
 use App\Models\User;
+use Database\Seeders\Utils;
 use Illuminate\Http\Client\Response;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Redis;
@@ -76,13 +77,15 @@ class DataController extends Controller
 
     public function getData(Request $request)
     {
+        info($request['type']);
         switch ($request['type']) {
-            case null:
-//                $request->file('body')->store(storage_path('app\public'));
-                if($request->hasFile('file')) {
-                    $request->file('file')->storeAs('public/files', 'injection-file.xlsx');
-                    info("here");
-                }
+            case 'inject_solde':
+                info("inject_solde");
+                $pathCsv = storage_path().'\app\public\injection-files\injection_file.csv';
+                $injectFunc = function ($data) {
+                    info($data);
+                };
+                Utils::getDataFromDBOrValidateInjectionFile($injectFunc, $pathCsv);
                 break;
             case 'deactivate_user':
                 return UserController::deactivateUser($request->body);

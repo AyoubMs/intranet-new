@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Session;
 use Laravel\Socialite\Facades\Socialite;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Redis;
-
+use PhpOffice\PhpSpreadsheet\IOFactory;
 
 
 /*
@@ -32,31 +32,36 @@ Route::get('/', function () {
 Route::post('/data', [DataController::class, 'getData']);
 
 Route::post('/injection', function (Request $request) {
-    info($request->file('file')->extension());
     if($request->file('file')->extension() !== 'xlsx') {
         $errors = new StdClass();
         $errors->injectionError = 'Please upload an excel file';
+        return $errors;
+    } else if ($request->file('file')->getSize() > 1000000) {
+        $errors = new StdClass();
+        $errors->injectionError = 'Please upload a file less than 1Mo';
         return $errors;
     }
     $request->file('file')->storeAs('public/injection-files', 'injection_file.xlsx');
     $pathXlsx = storage_path().'\app\public\injection-files\injection_file.xlsx';
     $pathCsv = storage_path().'\app\public\injection-files\injection_file.csv';
 
-    $reader = \PhpOffice\PhpSpreadsheet\IOFactory::createReader('Xlsx');
-    $spreadsheet = $reader->load($pathXlsx);
+    try {
+        $reader = IOFactory::createReader('Xlsx');
+        $spreadsheet = $reader->load($pathXlsx);
 
-    $writer = \PhpOffice\PhpSpreadsheet\IOFactory::createWriter($spreadsheet, "Csv");
-    $writer->setSheetIndex(0);
-    $writer->setDelimiter(',');
+        $writer = IOFactory::createWriter($spreadsheet, "Csv");
+        $writer->setSheetIndex(0);
+        $writer->setDelimiter(',');
 
-    $writer->save($pathCsv);
+        $writer->save($pathCsv);
+        $emptyFunc = function () {};
 
-    $emptyFunc = function () {};
-
-    return Utils::getDataFromDBOrValidateInjectionFile($emptyFunc, $pathCsv, true);
-//    $injectFunc = function() {};
-//
-//    Utils::getDataFromDB($injectFunc, $pathCsv);
+        return Utils::getDataFromDBOrValidateInjectionFile($emptyFunc, $pathCsv, true);
+    } catch (Exception $e) {
+        $errors = new StdClass();
+        $errors->injectionError = 'Please upload a new excel file';
+        return $errors;
+    }
 
 });
 
