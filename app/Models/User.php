@@ -48,6 +48,11 @@ class User extends Authenticatable
         'password' => 'hashed',
     ];
 
+    public function conges()
+    {
+        return $this->hasMany(DemandeConge::class);
+    }
+
     public function comment()
     {
         return $this->hasOne(Comment::class);

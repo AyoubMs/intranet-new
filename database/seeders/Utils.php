@@ -13,6 +13,7 @@ class Utils
             $csvData = fopen($path, 'r');
             $transRow = true;
             while (($data = fgetcsv($csvData, 555, ',')) !== false) {
+                $congesPath = storage_path().'\app\public\conges.csv';
                 if ($injection and $transRow) {
                     if (count($data) !== 3 and $data[3] !== '') {
                         $errors = new StdClass();
@@ -23,7 +24,6 @@ class Utils
                     }
                 }
                 if (!$transRow && !$injection) {
-                    info("called");
                     $func($data);
                 }
                 $transRow = false;

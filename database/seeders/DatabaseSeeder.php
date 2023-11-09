@@ -19,7 +19,7 @@ class DatabaseSeeder extends Seeder
     /**
      * Seed the application's database.
      */
-    public function run(DepartmentSeeder $departmentSeeder, LanguageSeeder $languageSeeder, MotifDepartSeeder $motifDepartSeeder, OperationSeeder $operationSeeder, RoleSeeder $roleSeeder, TeamTypeSeeder $teamTypeSeeder, IdentityTypeSeeder $identityTypeSeeder, NationalitySeeder $nationalitySeeder, SourcingTypeSeeder $sourcingTypeSeeder, FamilySituationSeeder $familySituationSeeder): void
+    public function run(DepartmentSeeder $departmentSeeder, LanguageSeeder $languageSeeder, MotifDepartSeeder $motifDepartSeeder, OperationSeeder $operationSeeder, RoleSeeder $roleSeeder, TeamTypeSeeder $teamTypeSeeder, IdentityTypeSeeder $identityTypeSeeder, NationalitySeeder $nationalitySeeder, SourcingTypeSeeder $sourcingTypeSeeder, FamilySituationSeeder $familySituationSeeder, DemandeCongeSeeder $demandeCongeSeeder, EtatDemandeCongeSeeder $etatDemandeCongeSeeder): void
     {
         $departmentSeeder->run();
         $languageSeeder->run();
@@ -34,6 +34,7 @@ class DatabaseSeeder extends Seeder
         $allUsersPath = storage_path() . '\app\public\users.csv';
         $worldLineUsers = storage_path() . '\app\public\users_wl.csv';
         $soldesPath = storage_path() . '\app\public\solde';
+        $wfmUsersPath = storage_path() . '\app\public\wfm_operations.csv';
 
         $fillUsersWithNoRelations = function ($data) {
             $user = User::factory()->create([
@@ -67,9 +68,10 @@ class DatabaseSeeder extends Seeder
         };
 
         $fillUsersWithManagers = function ($data) {
-            $firstName = substr($data[27], 0, strpos($data[27], ' '));
-            $lastName = substr($data[27], strpos($data[27], ' ') + 1);
-            if (!!$userFromCSV = User::where(['first_name' => $firstName, 'last_name' => $lastName])->first()) {
+            $lastName = substr($data[27], 0, strpos($data[27], ' '));
+            $firstName = substr($data[27], strpos($data[27], ' ') + 1);
+            $userFromCSV = User::where('first_name', $firstName)->where('last_name', $lastName)->first() ?? User::where('first_name', $lastName)->where('last_name', $firstName)->first();
+            if (!is_null($userFromCSV)) {
                 $user = User::where('matricule', $data[2])->first();
                 $user->managers()->attach($userFromCSV->id);
                 $user->save();
@@ -90,6 +92,45 @@ class DatabaseSeeder extends Seeder
             $user->save();
         };
 
+        $fillWFMUsersWithOperationsPartial2 = function ($data) {
+            $user = User::where('matricule', 'like', "%$data[1]%")->first();
+            $user->department_id = 5;
+            if ($data[4] !== "") {
+                $operation_id = Operation::where('name', 'like', "%$data[4]%")->first()->id;
+                $user->operations()->attach($operation_id);
+            }
+
+            $user->save();
+        };
+
+        $fillWFMUsersWithOperationsPartial1 = function ($data) {
+            $user = User::where('matricule', 'like', "%$data[1]%")->first();
+            $user->department_id = Department::where('name', 'like', '%wfm%')->first()->id;
+            if ($data[2] !== "ALL") {
+                $operation_id = Operation::where('name', 'like', "%$data[2]%")->first()->id;
+                $user->operations()->attach($operation_id);
+            }
+            if ($data[3] !== "") {
+                $operation_id = Operation::where('name', 'like', "%$data[3]%")->first()->id;
+                $user->operations()->attach($operation_id);
+            }
+
+            $user->save();
+        };
+
+        $fillWFMUsersWithOperationsWhenAll = function ($data) {
+            $user = User::where('matricule', 'like', "%$data[1]%")->first();
+            $user->department_id = 5;
+            if ($data[2] === "ALL") {
+                $operation_ids = Operation::pluck('id')->toArray();
+                foreach ($operation_ids as $operation_id) {
+                    $user->operations()->attach($operation_id);
+                }
+            }
+
+            $user->save();
+        };
+
         $fillUsersWithTeamTypes = function ($data) {
             $user = User::where('matricule', $data[1])->first();
             $user->team_type_id = TeamType::where('name', $data[9])->first()->id;
@@ -100,17 +141,22 @@ class DatabaseSeeder extends Seeder
         $fillUsersWithSoldes = function ($data) {
             $user = User::where('matricule', $data[2])->first();
 
-            $user->solde_cp = (double) $data[11];
-            $user->solde_rjf = (double) $data[15];
+            $user->solde_cp = (double)$data[11];
+            $user->solde_rjf = (double)$data[15];
             $user->save();
         };
 
         Utils::getDataFromDBOrValidateInjectionFile($fillUsersWithNoRelations, $allUsersPath);
         Utils::getDataFromDBOrValidateInjectionFile($fillUsersWithOperations, $allUsersPath);
+        Utils::getDataFromDBOrValidateInjectionFile($fillWFMUsersWithOperationsWhenAll, $wfmUsersPath);
+        Utils::getDataFromDBOrValidateInjectionFile($fillWFMUsersWithOperationsPartial1, $wfmUsersPath);
+        Utils::getDataFromDBOrValidateInjectionFile($fillWFMUsersWithOperationsPartial2, $wfmUsersPath);
         Utils::getDataFromDBOrValidateInjectionFile($fillUsersWithManagers, $allUsersPath);
         Utils::getDataFromDBOrValidateInjectionFile($fillUsersWithTeamTypes, $worldLineUsers);
         Utils::getDataFromDBOrValidateInjectionFile($fillUsersWithSoldes, $soldesPath);
 
+        $etatDemandeCongeSeeder->run();
         $identityTypeSeeder->run();
+        $demandeCongeSeeder->run();
     }
 }

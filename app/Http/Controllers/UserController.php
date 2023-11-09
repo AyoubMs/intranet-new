@@ -10,6 +10,7 @@ use App\Models\Operation;
 use App\Models\Role;
 use App\Models\SourcingType;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Redis;
@@ -19,195 +20,6 @@ use stdClass;
 
 class UserController extends Controller
 {
-    protected static function getUsersFromOperations($operation_ids, $manager_ids)
-    {
-        $operations = Operation::whereIn('id', $operation_ids)->get();
-        $users = [];
-        foreach ($operations as $operation) {
-            foreach ($operation->users as $user) {
-                foreach ($user->managers->pluck('id')->toArray() as $manager_id) {
-                    if (in_array($manager_id, $manager_ids) and !in_array($user, $users)) {
-                        $users[] = $user;
-                    }
-                }
-                if (empty($manager_ids)) {
-                    $users[] = $user;
-                }
-            }
-        }
-        return new Collection($users);
-    }
-
-
-    protected static function getQueriesByStatusAndNamesPartial($operation_ids, $role_ids, $language_ids, $status, $manager_ids, $active, $dateDebut, $dateFin)
-    {
-        $users = self::getUsersFromOperations($operation_ids, $manager_ids);
-        if ($status !== 'all_users') {
-            $output = [
-                0 => $users->isEmpty() ? [] : $users->toQuery()->with('comment')->with('motif')->with('operation')->with('operations')->with('managers')->whereNull('date_entree_production')->where('active', $active)->whereIn('role_id', $role_ids)->whereIn('language_id', $language_ids)->paginate(),
-                1 => User::whereNull('date_entree_production')->where('active', $active)->whereIn('role_id', $role_ids)->whereIn('language_id', $language_ids)->paginate(),
-                2 => $users->isEmpty() ? [] : $users->toQuery()->with('comment')->with('motif')->with('operation')->with('operations')->with('managers')->whereNull('date_entree_production')->where('active', $active)->whereIn('language_id', $language_ids)->paginate(),
-                3 => User::whereNull('date_entree_production')->where('active', $active)->whereIn('language_id', $language_ids)->paginate(),
-                4 => $users->isEmpty() ? [] : $users->toQuery()->with('comment')->with('motif')->with('operation')->with('operations')->with('managers')->whereNull('date_entree_production')->where('active', $active)->whereIn('role_id', $role_ids)->paginate(),
-                5 => User::whereNull('date_entree_production')->where('active', $active)->whereIn('role_id', $role_ids)->paginate(),
-                6 => $users->isEmpty() ? [] : $users->toQuery()->with('comment')->with('motif')->with('operation')->with('operations')->with('managers')->whereNull('date_entree_production')->where('active', $active)->paginate(),
-                7 => User::whereNull('date_entree_production')->where('active', $active)->paginate(),
-                8 => $users->isEmpty() ? [] : $users->toQuery()->with('comment')->with('motif')->with('operation')->with('operations')->with('managers')->whereDate('date_entree_production', '>=', $dateDebut ?? '1980-01-01')->where('active', $active)->whereIn('role_id', $role_ids)->whereIn('language_id', $language_ids)->paginate(),
-                9 => User::whereDate('date_entree_production', '>=', $dateDebut ?? '1980-01-01')->where('active', $active)->whereIn('role_id', $role_ids)->whereIn('language_id', $language_ids)->paginate(),
-                10 => $users->isEmpty() ? [] : $users->toQuery()->with('comment')->with('motif')->with('operation')->with('operations')->with('managers')->whereDate('date_entree_production', '>=', $dateDebut ?? '1980-01-01')->where('active', $active)->whereIn('language_id', $language_ids)->paginate(),
-                11 => User::whereDate('date_entree_production', '>=', $dateDebut ?? '1980-01-01')->where('active', $active)->whereIn('language_id', $language_ids)->paginate(),
-                12 => $users->isEmpty() ? [] : $users->toQuery()->with('comment')->with('motif')->with('operation')->with('operations')->with('managers')->whereDate('date_entree_production', '>=', $dateDebut ?? '1980-01-01')->where('active', $active)->whereIn('role_id', $role_ids)->paginate(),
-                13 => User::whereDate('date_entree_production', '>=', $dateDebut ?? '1980-01-01')->where('active', $active)->whereIn('role_id', $role_ids)->paginate(),
-                14 => $users->isEmpty() ? [] : $users->toQuery()->with('comment')->with('motif')->with('operation')->with('operations')->with('managers')->whereDate('date_entree_production', '>=', $dateDebut ?? '1980-01-01')->where('active', $active)->paginate(),
-                15 => User::whereDate('date_entree_production', '>=', $dateDebut ?? '1980-01-01')->where('active', $active)->paginate(),
-                16 => $users->isEmpty() ? [] : $users->toQuery()->with('comment')->with('motif')->with('operation')->with('operations')->with('managers')->whereDate('date_entree_production', '<=', $dateFin ?? '2100-01-01')->where('active', $active)->whereIn('role_id', $role_ids)->whereIn('language_id', $language_ids)->paginate(),
-                17 => User::whereDate('date_entree_production', '<=', $dateFin ?? '2100-01-01')->where('active', $active)->whereIn('role_id', $role_ids)->whereIn('language_id', $language_ids)->paginate(),
-                18 => $users->isEmpty() ? [] : $users->toQuery()->with('comment')->with('motif')->with('operation')->with('operations')->with('managers')->whereDate('date_entree_production', '<=', $dateFin ?? '2100-01-01')->where('active', $active)->whereIn('language_id', $language_ids)->paginate(),
-                19 => User::whereDate('date_entree_production', '<=', $dateFin ?? '2100-01-01')->where('active', $active)->whereIn('language_id', $language_ids)->paginate(),
-                20 => $users->isEmpty() ? [] : $users->toQuery()->with('comment')->with('motif')->with('operation')->with('operations')->with('managers')->whereDate('date_entree_production', '<=', $dateFin ?? '2100-01-01')->where('active', $active)->whereIn('role_id', $role_ids)->paginate(),
-                21 => User::whereDate('date_entree_production', '<=', $dateFin ?? '2100-01-01')->where('active', $active)->whereIn('role_id', $role_ids)->paginate(),
-                22 => $users->isEmpty() ? [] : $users->toQuery()->with('comment')->with('motif')->with('operation')->with('operations')->with('managers')->whereDate('date_entree_production', '<=', $dateFin ?? '2100-01-01')->where('active', $active)->paginate(),
-                23 => User::whereDate('date_entree_production', '<=', $dateFin ?? '2100-01-01')->where('active', $active)->paginate(),
-                24 => $users->isEmpty() ? [] : $users->toQuery()->with('comment')->with('motif')->with('operation')->with('operations')->with('managers')->whereBetween('date_entree_production', [$dateDebut, $dateFin])->where('active', $active)->whereIn('role_id', $role_ids)->whereIn('language_id', $language_ids)->paginate(),
-                25 => User::whereBetween('date_entree_production', [$dateDebut, $dateFin])->where('active', $active)->whereIn('role_id', $role_ids)->whereIn('language_id', $language_ids)->paginate(),
-                26 => $users->isEmpty() ? [] : $users->toQuery()->with('comment')->with('motif')->with('operation')->with('operations')->with('managers')->whereBetween('date_entree_production', [$dateDebut, $dateFin])->where('active', $active)->whereIn('language_id', $language_ids)->paginate(),
-                27 => User::whereBetween('date_entree_production', [$dateDebut, $dateFin])->where('active', $active)->whereIn('language_id', $language_ids)->paginate(),
-                28 => $users->isEmpty() ? [] : $users->toQuery()->with('comment')->with('motif')->with('operation')->with('operations')->with('managers')->whereBetween('date_entree_production', [$dateDebut, $dateFin])->where('active', $active)->whereIn('role_id', $role_ids)->paginate(),
-                29 => User::whereBetween('date_entree_production', [$dateDebut, $dateFin])->where('active', $active)->whereIn('role_id', $role_ids)->paginate(),
-                30 => $users->isEmpty() ? [] : $users->toQuery()->with('comment')->with('motif')->with('operation')->with('operations')->with('managers')->whereBetween('date_entree_production', [$dateDebut, $dateFin])->where('active', $active)->paginate(),
-                31 => User::whereBetween('date_entree_production', [$dateDebut, $dateFin])->where('active', $active)->paginate(),
-            ];
-        } else {
-            $output = [
-                0 => $users->isEmpty() ? [] : $users->toQuery()->with('comment')->with('motif')->with('operation')->with('operations')->with('managers')->whereNull('date_entree_production')->whereIn('role_id', $role_ids)->whereIn('language_id', $language_ids)->paginate(),
-                1 => User::whereNull('date_entree_production')->whereIn('role_id', $role_ids)->whereIn('language_id', $language_ids)->paginate(),
-                2 => $users->isEmpty() ? [] : $users->toQuery()->with('comment')->with('motif')->with('operation')->with('operations')->with('managers')->whereNull('date_entree_production')->whereIn('language_id', $language_ids)->paginate(),
-                3 => User::whereNull('date_entree_production')->whereIn('language_id', $language_ids)->paginate(),
-                4 => $users->isEmpty() ? [] : $users->toQuery()->with('comment')->with('motif')->with('operation')->with('operations')->with('managers')->whereNull('date_entree_production')->whereIn('role_id', $role_ids)->paginate(),
-                5 => User::whereNull('date_entree_production')->whereIn('role_id', $role_ids)->paginate(),
-                6 => $users->isEmpty() ? [] : $users->toQuery()->with('comment')->with('motif')->with('operation')->with('operations')->with('managers')->whereNull('date_entree_production')->paginate(),
-                7 => User::whereNull('date_entree_production')->paginate(),
-                8 => $users->isEmpty() ? [] : $users->toQuery()->with('comment')->with('motif')->with('operation')->with('operations')->with('managers')->whereDate('date_entree_production', '>=', $dateDebut ?? '1980-01-01')->whereIn('role_id', $role_ids)->whereIn('language_id', $language_ids)->paginate(),
-                9 => User::whereDate('date_entree_production', '>=', $dateDebut ?? '1980-01-01')->whereIn('role_id', $role_ids)->whereIn('language_id', $language_ids)->paginate(),
-                10 => $users->isEmpty() ? [] : $users->toQuery()->with('comment')->with('motif')->with('operation')->with('operations')->with('managers')->whereDate('date_entree_production', '>=', $dateDebut ?? '1980-01-01')->whereIn('language_id', $language_ids)->paginate(),
-                11 => User::whereDate('date_entree_production', '>=', $dateDebut ?? '1980-01-01')->whereIn('language_id', $language_ids)->paginate(),
-                12 => $users->isEmpty() ? [] : $users->toQuery()->with('comment')->with('motif')->with('operation')->with('operations')->with('managers')->whereDate('date_entree_production', '>=', $dateDebut ?? '1980-01-01')->whereIn('role_id', $role_ids)->paginate(),
-                13 => User::whereDate('date_entree_production', '>=', $dateDebut ?? '1980-01-01')->whereIn('role_id', $role_ids)->paginate(),
-                14 => $users->isEmpty() ? [] : $users->toQuery()->with('comment')->with('motif')->with('operation')->with('operations')->with('managers')->whereDate('date_entree_production', '>=', $dateDebut ?? '1980-01-01')->paginate(),
-                15 => User::whereDate('date_entree_production', '>=', $dateDebut ?? '1980-01-01')->paginate(),
-                16 => $users->isEmpty() ? [] : $users->toQuery()->with('comment')->with('motif')->with('operation')->with('operations')->with('managers')->whereDate('date_entree_production', '<=', $dateFin ?? '2100-01-01')->whereIn('role_id', $role_ids)->whereIn('language_id', $language_ids)->paginate(),
-                17 => User::whereDate('date_entree_production', '<=', $dateFin ?? '2100-01-01')->whereIn('role_id', $role_ids)->whereIn('language_id', $language_ids)->paginate(),
-                18 => $users->isEmpty() ? [] : $users->toQuery()->with('comment')->with('motif')->with('operation')->with('operations')->with('managers')->whereDate('date_entree_production', '<=', $dateFin ?? '2100-01-01')->whereIn('language_id', $language_ids)->paginate(),
-                19 => User::whereDate('date_entree_production', '<=', $dateFin ?? '2100-01-01')->whereIn('language_id', $language_ids)->paginate(),
-                20 => $users->isEmpty() ? [] : $users->toQuery()->with('comment')->with('motif')->with('operation')->with('operations')->with('managers')->whereDate('date_entree_production', '<=', $dateFin ?? '2100-01-01')->whereIn('role_id', $role_ids)->paginate(),
-                21 => User::whereDate('date_entree_production', '<=', $dateFin ?? '2100-01-01')->whereIn('role_id', $role_ids)->paginate(),
-                22 => $users->isEmpty() ? [] : $users->toQuery()->with('comment')->with('motif')->with('operation')->with('operations')->with('managers')->whereDate('date_entree_production', '<=', $dateFin ?? '2100-01-01')->paginate(),
-                23 => User::whereDate('date_entree_production', '<=', $dateFin ?? '2100-01-01')->paginate(),
-                24 => $users->isEmpty() ? [] : $users->toQuery()->with('comment')->with('motif')->with('operation')->with('operations')->with('managers')->whereBetween('date_entree_production', [$dateDebut ?? '1980-01-01', $dateFin ?? '2100-01-01'])->whereIn('role_id', $role_ids)->whereIn('language_id', $language_ids)->paginate(),
-                25 => User::whereBetween('date_entree_production', [$dateDebut ?? '1980-01-01', $dateFin ?? '2100-01-01'])->whereIn('role_id', $role_ids)->whereIn('language_id', $language_ids)->paginate(),
-                26 => $users->isEmpty() ? [] : $users->toQuery()->with('comment')->with('motif')->with('operation')->with('operations')->with('managers')->whereBetween('date_entree_production', [$dateDebut ?? '1980-01-01', $dateFin ?? '2100-01-01'])->whereIn('language_id', $language_ids)->paginate(),
-                27 => User::whereBetween('date_entree_production', [$dateDebut ?? '1980-01-01', $dateFin ?? '2100-01-01'])->whereIn('language_id', $language_ids)->paginate(),
-                28 => $users->isEmpty() ? [] : $users->toQuery()->with('comment')->with('motif')->with('operation')->with('operations')->with('managers')->whereBetween('date_entree_production', [$dateDebut ?? '1980-01-01', $dateFin ?? '2100-01-01'])->whereIn('role_id', $role_ids)->paginate(),
-                29 => User::whereBetween('date_entree_production', [$dateDebut ?? '1980-01-01', $dateFin ?? '2100-01-01'])->whereIn('role_id', $role_ids)->paginate(),
-                30 => $users->isEmpty() ? [] : $users->toQuery()->with('comment')->with('motif')->with('operation')->with('operations')->with('managers')->whereBetween('date_entree_production', [$dateDebut ?? '1980-01-01', $dateFin ?? '2100-01-01'])->paginate(),
-                31 => User::whereBetween('date_entree_production', [$dateDebut ?? '1980-01-01', $dateFin ?? '2100-01-01'])->paginate(),
-            ];
-        }
-
-        return $output;
-    }
-
-    protected static function getQueriesByStatusAndNamesFinal($operation_ids, $role_ids, $language_ids, $status, $names, $active, $dateDebut, $dateFin)
-    {
-        $managers_ids = [];
-        if (empty($names)) {
-            return self::getQueriesByStatus($operation_ids, $role_ids, $language_ids, $status, $active, $dateDebut, $dateFin, $managers_ids);
-        } else {
-            foreach ($names as $name) {
-                $wholeName = explode(' ', $name);
-                $managers_ids[] = User::where('first_name', $wholeName[1])->where('last_name', $wholeName[2])->first()->id;
-            }
-            return self::getQueriesByStatusAndNamesPartial($operation_ids, $role_ids, $language_ids, $status, $managers_ids, $active, $dateDebut, $dateFin);
-        }
-    }
-
-    protected static function getQueriesByStatus($operation_ids, $role_ids, $language_ids, $status, $active, $dateDebut, $dateFin, $manager_ids)
-    {
-        $users = self::getUsersFromOperations($operation_ids, $manager_ids);
-        if ($status !== 'all_users') {
-            $output = [
-                0 => $users->isEmpty() ? [] : $users->toQuery()->with('comment')->with('motif')->with('operation')->with('operations')->with('managers')->where('active', $active)->whereIn('role_id', $role_ids)->whereIn('language_id', $language_ids)->whereNull('date_entree_production')->paginate(),
-                1 => User::where('active', $active)->whereIn('role_id', $role_ids)->whereIn('language_id', $language_ids)->whereNull('date_entree_production')->paginate(),
-                2 => $users->isEmpty() ? [] : $users->toQuery()->with('comment')->with('motif')->with('operation')->with('operations')->with('managers')->where('active', $active)->whereIn('language_id', $language_ids)->whereNull('date_entree_production')->paginate(),
-                3 => User::where('active', $active)->whereIn('language_id', $language_ids)->whereNull('date_entree_production')->paginate(),
-                4 => $users->isEmpty() ? [] : $users->toQuery()->with('comment')->with('motif')->with('operation')->with('operations')->with('managers')->where('active', $active)->whereIn('role_id', $role_ids)->whereNull('date_entree_production')->paginate(),
-                5 => User::where('active', $active)->whereIn('role_id', $role_ids)->whereNull('date_entree_production')->paginate(),
-                6 => $users->isEmpty() ? [] : $users->toQuery()->with('comment')->with('motif')->with('operation')->with('operations')->with('managers')->where('active', $active)->whereNull('date_entree_production')->paginate(),
-                7 => User::where('active', $active)->whereNull('date_entree_production')->paginate(),
-                8 => $users->isEmpty() ? [] : $users->toQuery()->with('comment')->with('motif')->with('operation')->with('operations')->with('managers')->where('active', $active)->whereIn('role_id', $role_ids)->whereIn('language_id', $language_ids)->whereDate('date_entree_production', '>=', $dateDebut ?? '1980-01-01')->paginate(),
-                9 => User::where('active', $active)->whereIn('role_id', $role_ids)->whereIn('language_id', $language_ids)->whereDate('date_entree_production', '>=', $dateDebut ?? '1980-01-01')->paginate(),
-                10 => User::where('active', $active)->whereIn('language_id', $language_ids)->whereDate('date_entree_production', '>=', $dateDebut ?? '1980-01-01')->paginate(),
-                11 => User::where('active', $active)->whereIn('language_id', $language_ids)->whereDate('date_entree_production', '>=', $dateDebut ?? '1980-01-01')->paginate(),
-                12 => $users->isEmpty() ? [] : $users->toQuery()->with('comment')->with('motif')->with('operation')->with('operations')->with('managers')->where('active', $active)->whereIn('role_id', $role_ids)->whereDate('date_entree_production', '>=', $dateDebut ?? '1980-01-01')->paginate(),
-                13 => User::where('active', $active)->whereIn('role_id', $role_ids)->whereDate('date_entree_production', '>=', $dateDebut ?? '1980-01-01')->paginate(),
-                14 => $users->isEmpty() ? [] : $users->toQuery()->with('comment')->with('motif')->with('operation')->with('operations')->with('managers')->where('active', $active)->whereDate('date_entree_production', '>=', $dateDebut ?? '1980-01-01')->paginate(),
-                15 => User::where('active', $active)->whereDate('date_entree_production', '>=', $dateDebut ?? '1980-01-01')->paginate(),
-                16 => $users->isEmpty() ? [] : $users->toQuery()->with('comment')->with('motif')->with('operation')->with('operations')->with('managers')->where('active', $active)->whereIn('role_id', $role_ids)->whereIn('language_id', $language_ids)->whereDate('date_entree_production', '<=', $dateFin ?? '2100-01-01')->paginate(),
-                17 => User::where('active', $active)->whereIn('role_id', $role_ids)->whereIn('language_id', $language_ids)->whereDate('date_entree_production', '<=', $dateFin ?? '2100-01-01')->paginate(),
-                18 => $users->isEmpty() ? [] : $users->toQuery()->with('comment')->with('motif')->with('operation')->with('operations')->with('managers')->where('active', $active)->whereIn('language_id', $language_ids)->whereDate('date_entree_production', '<=', $dateFin ?? '2100-01-01')->paginate(),
-                19 => User::where('active', $active)->whereIn('language_id', $language_ids)->whereDate('date_entree_production', '<=', $dateFin ?? '2100-01-01')->paginate(),
-                20 => $users->isEmpty() ? [] : $users->toQuery()->with('comment')->with('motif')->with('operation')->with('operations')->with('managers')->where('active', $active)->whereIn('role_id', $role_ids)->whereDate('date_entree_production', '<=', $dateFin ?? '2100-01-01')->paginate(),
-                21 => User::where('active', $active)->whereIn('role_id', $role_ids)->whereDate('date_entree_production', '<=', $dateFin ?? '2100-01-01')->paginate(),
-                22 => $users->isEmpty() ? [] : $users->toQuery()->with('comment')->with('motif')->with('operation')->with('operations')->with('managers')->where('active', $active)->whereDate('date_entree_production', '<=', $dateFin ?? '2100-01-01')->paginate(),
-                23 => User::where('active', $active)->whereDate('date_entree_production', '<=', $dateFin ?? '2100-01-01')->paginate(),
-                24 => $users->isEmpty() ? [] : $users->toQuery()->with('comment')->with('motif')->with('operation')->with('operations')->with('managers')->where('active', $active)->whereIn('role_id', $role_ids)->whereIn('language_id', $language_ids)->whereBetween('date_entree_production', [$dateDebut ?? '1980-01-01', $dateFin ?? '2100-01-01'])->paginate(),
-                25 => User::where('active', $active)->whereIn('role_id', $role_ids)->whereIn('language_id', $language_ids)->whereBetween('date_entree_production', [$dateDebut ?? '1980-01-01', $dateFin ?? '2100-01-01'])->paginate(),
-                26 => $users->isEmpty() ? [] : $users->toQuery()->with('comment')->with('motif')->with('operation')->with('operations')->with('managers')->where('active', $active)->whereIn('language_id', $language_ids)->whereBetween('date_entree_production', [$dateDebut ?? '1980-01-01', $dateFin ?? '2100-01-01'])->paginate(),
-                27 => User::where('active', $active)->whereIn('language_id', $language_ids)->whereBetween('date_entree_production', [$dateDebut ?? '1980-01-01', $dateFin ?? '2100-01-01'])->paginate(),
-                28 => $users->isEmpty() ? [] : $users->toQuery()->with('comment')->with('motif')->with('operation')->with('operations')->with('managers')->where('active', $active)->whereIn('role_id', $role_ids)->whereBetween('date_entree_production', [$dateDebut ?? '1980-01-01', $dateFin ?? '2100-01-01'])->paginate(),
-                29 => User::where('active', $active)->whereIn('role_id', $role_ids)->whereBetween('date_entree_production', [$dateDebut ?? '1980-01-01', $dateFin ?? '2100-01-01'])->paginate(),
-                30 => $users->isEmpty() ? [] : $users->toQuery()->with('comment')->with('motif')->with('operation')->with('operations')->with('managers')->where('active', $active)->whereBetween('date_entree_production', [$dateDebut ?? '1980-01-01', $dateFin ?? '2100-01-01'])->paginate(),
-                31 => User::where('active', $active)->whereBetween('date_entree_production', [$dateDebut ?? '1980-01-01', $dateFin ?? '2100-01-01'])->paginate(),
-            ];
-        } else {
-            $output = [
-                0 => $users->isEmpty() ? [] : $users->toQuery()->with('comment')->with('motif')->with('operation')->with('operations')->with('managers')->whereIn('role_id', $role_ids)->whereIn('language_id', $language_ids)->whereNull('date_entree_production')->paginate(),
-                1 => User::whereIn('role_id', $role_ids)->whereIn('language_id', $language_ids)->whereNull('date_entree_production')->paginate(),
-                2 => $users->isEmpty() ? [] : $users->toQuery()->with('comment')->with('motif')->with('operation')->with('operations')->with('managers')->whereIn('language_id', $language_ids)->whereNull('date_entree_production')->paginate(),
-                3 => User::whereIn('language_id', $language_ids)->whereNull('date_entree_production')->paginate(),
-                4 => $users->isEmpty() ? [] : $users->toQuery()->with('comment')->with('motif')->with('operation')->with('operations')->with('managers')->whereIn('role_id', $role_ids)->whereNull('date_entree_production')->paginate(),
-                5 => User::whereIn('role_id', $role_ids)->whereNull('date_entree_production')->paginate(),
-                6 => $users->isEmpty() ? [] : $users->toQuery()->with('comment')->with('motif')->with('operation')->with('operations')->with('managers')->whereNull('date_entree_production')->paginate(),
-                7 => User::whereNull('date_entree_production')->paginate(),
-                8 => $users->isEmpty() ? [] : $users->toQuery()->with('comment')->with('motif')->with('operation')->with('operations')->with('managers')->whereIn('role_id', $role_ids)->whereIn('language_id', $language_ids)->whereDate('date_entree_production', '>=', $dateDebut ?? '1980-01-01')->paginate(),
-                9 => User::whereIn('role_id', $role_ids)->whereIn('language_id', $language_ids)->whereDate('date_entree_production', '>=', $dateDebut ?? '1980-01-01')->paginate(),
-                10 => User::whereIn('language_id', $language_ids)->whereDate('date_entree_production', '>=', $dateDebut ?? '1980-01-01')->paginate(),
-                11 => User::whereIn('language_id', $language_ids)->whereDate('date_entree_production', '>=', $dateDebut ?? '1980-01-01')->paginate(),
-                12 => $users->isEmpty() ? [] : $users->toQuery()->with('comment')->with('motif')->with('operation')->with('operations')->with('managers')->whereIn('role_id', $role_ids)->whereDate('date_entree_production', '>=', $dateDebut ?? '1980-01-01')->paginate(),
-                13 => User::whereIn('role_id', $role_ids)->whereDate('date_entree_production', '>=', $dateDebut ?? '1980-01-01')->paginate(),
-                14 => $users->isEmpty() ? [] : $users->toQuery()->with('comment')->with('motif')->with('operation')->with('operations')->with('managers')->whereDate('date_entree_production', '>=', $dateDebut ?? '1980-01-01')->paginate(),
-                15 => User::whereDate('date_entree_production', '>=', $dateDebut ?? '1980-01-01')->paginate(),
-                16 => $users->isEmpty() ? [] : $users->toQuery()->with('comment')->with('motif')->with('operation')->with('operations')->with('managers')->whereIn('role_id', $role_ids)->whereIn('language_id', $language_ids)->whereDate('date_entree_production', '<=', $dateFin ?? '2100-01-01')->paginate(),
-                17 => User::whereIn('role_id', $role_ids)->whereIn('language_id', $language_ids)->whereDate('date_entree_production', '<=', $dateFin ?? '2100-01-01')->paginate(),
-                18 => $users->isEmpty() ? [] : $users->toQuery()->with('comment')->with('motif')->with('operation')->with('operations')->with('managers')->whereIn('language_id', $language_ids)->whereDate('date_entree_production', '<=', $dateFin ?? '2100-01-01')->paginate(),
-                19 => User::whereIn('language_id', $language_ids)->whereDate('date_entree_production', '<=', $dateFin ?? '2100-01-01')->paginate(),
-                20 => $users->isEmpty() ? [] : $users->toQuery()->with('comment')->with('motif')->with('operation')->with('operations')->with('managers')->whereIn('role_id', $role_ids)->whereDate('date_entree_production', '<=', $dateFin ?? '2100-01-01')->paginate(),
-                21 => User::whereIn('role_id', $role_ids)->whereDate('date_entree_production', '<=', $dateFin ?? '2100-01-01')->paginate(),
-                22 => $users->isEmpty() ? [] : $users->toQuery()->with('comment')->with('motif')->with('operation')->with('operations')->with('managers')->whereDate('date_entree_production', '<=', $dateFin ?? '2100-01-01')->paginate(),
-                23 => User::whereDate('date_entree_production', '<=', $dateFin ?? '2100-01-01')->paginate(),
-                24 => $users->isEmpty() ? [] : $users->toQuery()->with('comment')->with('motif')->with('operation')->with('operations')->with('managers')->whereIn('role_id', $role_ids)->whereIn('language_id', $language_ids)->whereBetween('date_entree_production', [$dateDebut ?? '1980-01-01', $dateFin ?? '2100-01-01'])->paginate(),
-                25 => User::whereIn('role_id', $role_ids)->whereIn('language_id', $language_ids)->whereBetween('date_entree_production', [$dateDebut ?? '1980-01-01', $dateFin ?? '2100-01-01'])->paginate(),
-                26 => $users->isEmpty() ? [] : $users->toQuery()->with('comment')->with('motif')->with('operation')->with('operations')->with('managers')->whereIn('language_id', $language_ids)->whereBetween('date_entree_production', [$dateDebut ?? '1980-01-01', $dateFin ?? '2100-01-01'])->paginate(),
-                27 => User::whereIn('language_id', $language_ids)->whereBetween('date_entree_production', [$dateDebut ?? '1980-01-01', $dateFin ?? '2100-01-01'])->paginate(),
-                28 => $users->isEmpty() ? [] : $users->toQuery()->with('comment')->with('motif')->with('operation')->with('operations')->with('managers')->whereIn('role_id', $role_ids)->whereBetween('date_entree_production', [$dateDebut ?? '1980-01-01', $dateFin ?? '2100-01-01'])->paginate(),
-                29 => User::whereIn('role_id', $role_ids)->whereBetween('date_entree_production', [$dateDebut ?? '1980-01-01', $dateFin ?? '2100-01-01'])->paginate(),
-                30 => $users->isEmpty() ? [] : $users->toQuery()->with('comment')->with('motif')->with('operation')->with('operations')->with('managers')->whereBetween('date_entree_production', [$dateDebut ?? '1980-01-01', $dateFin ?? '2100-01-01'])->paginate(),
-                31 => User::whereBetween('date_entree_production', [$dateDebut ?? '', $dateFin ?? ''])->paginate(),
-            ];
-        }
-
-        return $output;
-    }
 
     protected static function getDataFromBody($input)
     {
@@ -216,53 +28,6 @@ class UserController extends Controller
             foreach ($input as $item) {
                 $output[] = $item;
             }
-        }
-        return $output;
-    }
-
-    protected static function bundleConditionsAndQueries($operation_ids, $role_ids, $language_ids, $status, $names, $active, $dateDebut, $dateFin)
-    {
-        $conditions = [
-            0 => !$operation_ids->isEmpty() and !$role_ids->isEmpty() and !$language_ids->isEmpty() and is_null($dateDebut) and is_null($dateFin),
-            1 => $operation_ids->isEmpty() and !$role_ids->isEmpty() and !$language_ids->isEmpty() and is_null($dateDebut) and is_null($dateFin),
-            2 => !$operation_ids->isEmpty() and $role_ids->isEmpty() and !$language_ids->isEmpty() and is_null($dateDebut) and is_null($dateFin),
-            3 => $operation_ids->isEmpty() and $role_ids->isEmpty() and !$language_ids->isEmpty() and is_null($dateDebut) and is_null($dateFin),
-            4 => !$operation_ids->isEmpty() and !$role_ids->isEmpty() and $language_ids->isEmpty() and is_null($dateDebut) and is_null($dateFin),
-            5 => $operation_ids->isEmpty() and !$role_ids->isEmpty() and $language_ids->isEmpty() and is_null($dateDebut) and is_null($dateFin),
-            6 => !$operation_ids->isEmpty() and $role_ids->isEmpty() and $language_ids->isEmpty() and is_null($dateDebut) and is_null($dateFin),
-            7 => $operation_ids->isEmpty() and $role_ids->isEmpty() and $language_ids->isEmpty() and is_null($dateDebut) and is_null($dateFin),
-            8 => !$operation_ids->isEmpty() and !$role_ids->isEmpty() and !$language_ids->isEmpty() and !is_null($dateDebut) and is_null($dateFin),
-            9 => $operation_ids->isEmpty() and !$role_ids->isEmpty() and !$language_ids->isEmpty() and !is_null($dateDebut) and is_null($dateFin),
-            10 => !$operation_ids->isEmpty() and $role_ids->isEmpty() and !$language_ids->isEmpty() and !is_null($dateDebut) and is_null($dateFin),
-            11 => $operation_ids->isEmpty() and $role_ids->isEmpty() and !$language_ids->isEmpty() and !is_null($dateDebut) and is_null($dateFin),
-            12 => !$operation_ids->isEmpty() and !$role_ids->isEmpty() and $language_ids->isEmpty() and !is_null($dateDebut) and is_null($dateFin),
-            13 => $operation_ids->isEmpty() and !$role_ids->isEmpty() and $language_ids->isEmpty() and !is_null($dateDebut) and is_null($dateFin),
-            14 => !$operation_ids->isEmpty() and $role_ids->isEmpty() and $language_ids->isEmpty() and !is_null($dateDebut) and is_null($dateFin),
-            15 => $operation_ids->isEmpty() and $role_ids->isEmpty() and $language_ids->isEmpty() and !is_null($dateDebut) and is_null($dateFin),
-            16 => !$operation_ids->isEmpty() and !$role_ids->isEmpty() and !$language_ids->isEmpty() and is_null($dateDebut) and !is_null($dateFin),
-            17 => $operation_ids->isEmpty() and !$role_ids->isEmpty() and !$language_ids->isEmpty() and is_null($dateDebut) and !is_null($dateFin),
-            18 => !$operation_ids->isEmpty() and $role_ids->isEmpty() and !$language_ids->isEmpty() and is_null($dateDebut) and !is_null($dateFin),
-            19 => $operation_ids->isEmpty() and $role_ids->isEmpty() and !$language_ids->isEmpty() and is_null($dateDebut) and !is_null($dateFin),
-            20 => !$operation_ids->isEmpty() and !$role_ids->isEmpty() and $language_ids->isEmpty() and is_null($dateDebut) and !is_null($dateFin),
-            21 => $operation_ids->isEmpty() and !$role_ids->isEmpty() and $language_ids->isEmpty() and is_null($dateDebut) and !is_null($dateFin),
-            22 => !$operation_ids->isEmpty() and $role_ids->isEmpty() and $language_ids->isEmpty() and is_null($dateDebut) and !is_null($dateFin),
-            23 => $operation_ids->isEmpty() and $role_ids->isEmpty() and $language_ids->isEmpty() and is_null($dateDebut) and !is_null($dateFin),
-            24 => !$operation_ids->isEmpty() and !$role_ids->isEmpty() and !$language_ids->isEmpty() and !is_null($dateDebut) and !is_null($dateFin),
-            25 => $operation_ids->isEmpty() and !$role_ids->isEmpty() and !$language_ids->isEmpty() and !is_null($dateDebut) and !is_null($dateFin),
-            26 => !$operation_ids->isEmpty() and $role_ids->isEmpty() and !$language_ids->isEmpty() and !is_null($dateDebut) and !is_null($dateFin),
-            27 => $operation_ids->isEmpty() and $role_ids->isEmpty() and !$language_ids->isEmpty() and !is_null($dateDebut) and !is_null($dateFin),
-            28 => !$operation_ids->isEmpty() and !$role_ids->isEmpty() and $language_ids->isEmpty() and !is_null($dateDebut) and !is_null($dateFin),
-            29 => $operation_ids->isEmpty() and !$role_ids->isEmpty() and $language_ids->isEmpty() and !is_null($dateDebut) and !is_null($dateFin),
-            30 => !$operation_ids->isEmpty() and $role_ids->isEmpty() and $language_ids->isEmpty() and !is_null($dateDebut) and !is_null($dateFin),
-            31 => $operation_ids->isEmpty() and $role_ids->isEmpty() and $language_ids->isEmpty() and !is_null($dateDebut) and !is_null($dateFin),
-        ];
-
-        $output = [];
-        foreach ($conditions as $key => $condition) {
-            $obj = new StdClass();
-            $obj->condition = $condition;
-            $obj->query = self::getQueriesByStatusAndNamesFinal($operation_ids, $role_ids, $language_ids, $status, $names, $active, $dateDebut, $dateFin)[$key];
-            $output[] = $obj;
         }
         return $output;
     }
@@ -454,6 +219,39 @@ class UserController extends Controller
         return "done";
     }
 
+    protected static function filterWithInput($query, $input)
+    {
+        foreach ($input as $key => $value) {
+            switch ($key) {
+                case 'role_ids':
+                    if (!$value->isEmpty()) {
+                        $query->whereIn('role_id', $value);
+                    }
+                    break;
+                case 'language_ids':
+                    if (!$value->isEmpty()) {
+                        $query->whereIn('language_id', $value);
+                    }
+                    break;
+                case 'date_debut':
+                    if (!is_null($value)) {
+                        $query->whereDate('date_entree_production', '>=', $value ?? '1980-01-01');
+                    }
+                    break;
+                case 'date_fin':
+                    if (!is_null($value)) {
+                        $query->whereDate('date_entree_production', '<=', $value ?? '2100-01-01');
+                    }
+                    break;
+                case 'active':
+                    if (!is_null($value)) {
+                        $query->where('active', $value);
+                    }
+                    break;
+            }
+        }
+    }
+
     public static function getUsers($status, $body)
     {
         $operations = [];
@@ -461,22 +259,51 @@ class UserController extends Controller
         list($operations, $names) = self::getOperationsAndNames($body, $operations, $names);
         $profiles = self::getDataFromBody($body['profiles'] ?? []);
         $languages = self::getDataFromBody($body['languages'] ?? []);
-        $operation_ids = Operation::whereIn('name', $operations)->pluck('id');
-        $role_ids = Role::whereIn('name', $profiles)->pluck('id');
-        $language_ids = Language::whereIn('name', $languages)->pluck('id');
+        $operation_ids = Operation::whereIn('name', $operations)->pluck('id') ?? new Collection([]);
+        $role_ids = Role::whereIn('name', $profiles)->pluck('id') ?? [];
+        $language_ids = Language::whereIn('name', $languages)->pluck('id') ?? new Collection([]);
+        $dateDebut = $body['dateDebut'];
+        $dateFin = $body['dateFin'];
         $active = null;
         if ($status === 'active_users' || $status === 'inactive_users') {
             $active = ($status === 'active_users');
         }
-
-        $objectToTake = [];
-        foreach (self::bundleConditionsAndQueries($operation_ids, $role_ids, $language_ids, $status, $names, $active, $body['dateDebut'] ?? null, $body['dateFin'] ?? null) as $key => $obj) {
-            if ($obj->condition) {
-                $objectToTake = $obj->query;
+        $managers_ids = [];
+        if (!empty($names)) {
+            foreach ($names as $name) {
+                $wholeName = explode(' ', $name);
+                $managers_ids[] = User::where('first_name', $wholeName[1])->where('last_name', $wholeName[2])->first()->id;
             }
+            $managers_ids = new Collection($managers_ids);
         }
 
-        return $objectToTake;
+        $input = array('role_ids' => $role_ids, 'language_ids' => $language_ids, 'date_debut' => $dateDebut, 'date_fin' => $dateFin, 'active' => $active);
+        $user_ids = [];
+        $operations = Operation::whereIn('id', $operation_ids)->get();
+        if ($operation_ids->isEmpty()) {
+            $users = User::when($input, function ($query, $input) {
+                self::filterWithInput($query, $input);
+            })->get();
+            return (new Collection($users))->toQuery()->with('comment')->with('motif')->with('operation')->with('operations')->with('managers')->paginate();
+        } else {
+            foreach ($operations as $operation) {
+                $user_ids[] = $operation->users->pluck('id')->toArray();
+                if (!$managers_ids->isEmpty()) {
+                    $user_ids = [];
+                    foreach ($operation->users as $user) {
+                        foreach ($user->managers->pluck('id')->toArray() as $manager_id) {
+                            if (in_array($manager_id, $managers_ids->toArray())) {
+                                $user_ids[] = array($user->id);
+                            }
+                        }
+                    }
+                }
+            }
+            $users = User::whereIn('id', array_merge(...$user_ids) ?? $user_ids)->when($input, function ($query, $input) {
+                self::filterWithInput($query, $input);
+            })->get();
+            return (new Collection($users))->toQuery()->with('comment')->with('motif')->with('operation')->with('operations')->with('managers')->paginate();
+        }
     }
 
     public static function addUser($body, $request)

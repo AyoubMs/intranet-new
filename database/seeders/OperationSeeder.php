@@ -14,10 +14,10 @@ class OperationSeeder extends Seeder
     public function run(): void
     {
         $activeOperations = ['LEBARA-France', 'ORTEL Allemagne', 'WORLDLINE',
-            'LEBARA-Allemagne', 'SCARLET', 'ORTEL Belgique', 'TELENET', 'LFM',
+            '.', 'SCARLET', 'ORTEL Belgique', 'TELENET', 'LFM',
             'LEBARA', 'UNIT-T', 'BOFROST', 'MKB', 'SIP Communication', 'ENGIE',
-            'VHC', 'ENECO', 'DIRECTION', 'BAS', 'De Wilde & Baele', 'SOGEDES',
-            'HYTECH', 'Direction', 'TUI FLY'];
+            'VHC', 'ENECO', 'BAS', 'De Wilde & Baele', 'SOGEDES',
+            'HYTECH', 'TUI FLY'];
         $inactiveOperations = ['BASE', 'CORONA DIRECT'];
 
         Operation::truncate();

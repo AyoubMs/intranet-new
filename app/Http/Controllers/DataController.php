@@ -77,15 +77,13 @@ class DataController extends Controller
 
     public function getData(Request $request)
     {
-        info($request['type']);
         switch ($request['type']) {
+            case 'export_demands':
+                return DemandeCongeController::exportDemandsFile($request);
+            case 'search_demands':
+                return DemandeCongeController::searchDemands($request);
             case 'inject_solde':
-                info("inject_solde");
-                $pathCsv = storage_path().'\app\public\injection-files\injection_file.csv';
-                $injectFunc = function ($data) {
-                    info($data);
-                };
-                Utils::getDataFromDBOrValidateInjectionFile($injectFunc, $pathCsv);
+                InjectionController::injectSolde();
                 break;
             case 'deactivate_user':
                 return UserController::deactivateUser($request->body);

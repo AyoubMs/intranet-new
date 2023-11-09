@@ -21,7 +21,7 @@ class RoleSeeder extends Seeder
             'Administrateur Systèmes et Réseaux – Support',
             'Agent moyens généraux', 'Formateur',
             'Chargé de planification et statistiques ', 'Chargé de formation',
-            'Chargé de recrutement', 'Chargé de Qualité et Process',
+            'Chargé de recrutement', 'Chargé de Qualité et Process', 'Directeur', 'Directeur de Site', 'Directrice de Site',
             'Directeur Ressources Humaines',
             'Chargée de Communication et moyens Généraux',
             'Coordinateur Qualité Formation',

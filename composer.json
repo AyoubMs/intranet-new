@@ -17,7 +17,8 @@
         "laravel/tinker": "^2.8",
         "phpoffice/phpspreadsheet": "*",
         "predis/predis": "*",
-        "socialiteproviders/microsoft-azure": "^5.1"
+        "socialiteproviders/microsoft-azure": "^5.1",
+      "ext-xlswriter": "*"
     },
     "require-dev": {
         "fakerphp/faker": "^1.9.1",

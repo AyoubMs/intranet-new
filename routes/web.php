@@ -2,6 +2,7 @@
 
 
 use App\Http\Controllers\DataController;
+use App\Http\Controllers\InjectionController;
 use App\Models\Operation;
 use App\Models\Role;
 use Database\Seeders\Utils;
@@ -31,38 +32,6 @@ Route::get('/', function () {
 
 Route::post('/data', [DataController::class, 'getData']);
 
-Route::post('/injection', function (Request $request) {
-    if($request->file('file')->extension() !== 'xlsx') {
-        $errors = new StdClass();
-        $errors->injectionError = 'Please upload an excel file';
-        return $errors;
-    } else if ($request->file('file')->getSize() > 1000000) {
-        $errors = new StdClass();
-        $errors->injectionError = 'Please upload a file less than 1Mo';
-        return $errors;
-    }
-    $request->file('file')->storeAs('public/injection-files', 'injection_file.xlsx');
-    $pathXlsx = storage_path().'\app\public\injection-files\injection_file.xlsx';
-    $pathCsv = storage_path().'\app\public\injection-files\injection_file.csv';
-
-    try {
-        $reader = IOFactory::createReader('Xlsx');
-        $spreadsheet = $reader->load($pathXlsx);
-
-        $writer = IOFactory::createWriter($spreadsheet, "Csv");
-        $writer->setSheetIndex(0);
-        $writer->setDelimiter(',');
-
-        $writer->save($pathCsv);
-        $emptyFunc = function () {};
-
-        return Utils::getDataFromDBOrValidateInjectionFile($emptyFunc, $pathCsv, true);
-    } catch (Exception $e) {
-        $errors = new StdClass();
-        $errors->injectionError = 'Please upload a new excel file';
-        return $errors;
-    }
-
-});
+Route::post('/injection', [InjectionController::class, 'loadData']);
 
 require __DIR__.'/auth.php';
