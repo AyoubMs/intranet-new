@@ -179,7 +179,7 @@ class UserController extends Controller
 
     }
 
-    public static function affectUser($body)
+    public static function affectUser($body, $request)
     {
         $operations = [];
         $names = [];
@@ -187,6 +187,7 @@ class UserController extends Controller
         $last_names = [];
         $user = User::where('matricule', $body['matricule'])->first();
         list($operations, $names) = self::getOperationsAndNames($body, $operations, $names);
+        info($request);
         foreach ($names as $name) {
             $explosion = explode(' ', $name);
             $first_names[] = $explosion[0];
@@ -213,7 +214,12 @@ class UserController extends Controller
         }
         $user->date_entree_formation = $body['date_entree_formation'];
         if (!is_null($body['principal_operation'])) {
-            $user->operation_id = Operation::where('name', $body['principal_operation'])->first()->id;
+//            info($body['principal_operation']);
+            $operation_id = Operation::where('name', 'like', "%".$body['principal_operation']."%")->first()->id;
+            $user->operation_id = $operation_id;
+            if (!in_array($operation_id, $user_operations_ids)) {
+                $user->operations()->attach($operation_id);
+            }
         }
         $user->save();
         return "done";
@@ -274,8 +280,8 @@ class UserController extends Controller
                 $wholeName = explode(' ', $name);
                 $managers_ids[] = User::where('first_name', $wholeName[1])->where('last_name', $wholeName[2])->first()->id;
             }
-            $managers_ids = new Collection($managers_ids);
         }
+        $managers_ids = new Collection($managers_ids);
 
         $input = array('role_ids' => $role_ids, 'language_ids' => $language_ids, 'date_debut' => $dateDebut, 'date_fin' => $dateFin, 'active' => $active);
         $user_ids = [];
@@ -284,7 +290,7 @@ class UserController extends Controller
             $users = User::when($input, function ($query, $input) {
                 self::filterWithInput($query, $input);
             })->get();
-            return (new Collection($users))->toQuery()->with('comment')->with('motif')->with('operation')->with('operations')->with('managers')->paginate();
+            return (new Collection($users))->toQuery()->with('comment')->with('motif')->with('operation')->with('operations')->with('managers')->with('role')->paginate();
         } else {
             foreach ($operations as $operation) {
                 $user_ids[] = $operation->users->pluck('id')->toArray();
@@ -302,7 +308,7 @@ class UserController extends Controller
             $users = User::whereIn('id', array_merge(...$user_ids) ?? $user_ids)->when($input, function ($query, $input) {
                 self::filterWithInput($query, $input);
             })->get();
-            return (new Collection($users))->toQuery()->with('comment')->with('motif')->with('operation')->with('operations')->with('managers')->paginate();
+            return (new Collection($users))->toQuery()->with('comment')->with('motif')->with('operation')->with('operations')->with('managers')->with('role')->paginate();
         }
     }
 

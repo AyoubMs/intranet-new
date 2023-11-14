@@ -37,6 +37,9 @@ class DatabaseSeeder extends Seeder
         $wfmUsersPath = storage_path() . '\app\public\wfm_operations.csv';
 
         $fillUsersWithNoRelations = function ($data) {
+//            if (str_contains('10490', $data[2])) {
+//                dd($data);
+//            }
             $user = User::factory()->create([
                 'matricule' => $data[2],
                 'first_name' => $data[3],
@@ -50,6 +53,8 @@ class DatabaseSeeder extends Seeder
                 'primary_language_id' => Language::where('name', $data[12])->first()->id ?? null,
                 'secondary_language_id' => Language::where('name', $data[14])->first()->id ?? null,
                 'motif_depart_id' => MotifDepart::where('name', $data[15])->first()->id ?? null,
+                'solde_cp' => 0,
+                'solde_rjf' => 0
             ]);
             $comment = Comment::factory()->create([
                 'user_id' => $user->id,
@@ -57,14 +62,23 @@ class DatabaseSeeder extends Seeder
             $comment->save();
             if (str_contains($data[7], 'reporting')) {
                 $user->role_id = Role::where('name', 'like', '%reporting%')->first()->id;
-                $user->save();
             } else if (!!Role::where('name', $data[7])->first()) {
-                $user->role_id = Role::where('name', 'like', "%$data[7]%")->first()->id;
-                $user->save();
+                if (!Role::where('name', 'like', "%".trim($data[7])."%")->first()) {
+                    dd($data);
+                }
+                $user->role_id = Role::where('name', 'like', "%".trim($data[7])."%")->first()->id;
+            } else if (str_contains($data[3], 'superviseur')) {
+                $user->role_id = Role::where('name', 'like', "%Superviseur%")->first()->id;
+            } else if (str_contains($data[3], 'opsmanager')) {
+                $user->role_id = Role::where('name', 'like', "%Opérations%")->first()->id;
+            } else if (str_contains($data[3], 'rh')) {
+                $user->role_id = Role::where('name', 'like', "%Responsable RH%")->first()->id;
+            } else if (str_contains($data[3], 'wfm')) {
+                $user->role_id = Role::where('name', 'like', "%planification%")->first()->id;
             } else {
                 $user->role_id = 1;
-                $user->save();
             }
+            $user->save();
         };
 
         $fillUsersWithManagers = function ($data) {
@@ -87,8 +101,8 @@ class DatabaseSeeder extends Seeder
             } else if (in_array($data[26], Department::all()->pluck('name')->toArray())) {
                 $user->department_id = Department::where('name', $data[26])->first()->id;
             }
-            $creator_id = User::where('first_name', 'like', "%chahir%")->where('last_name', 'like', "%ayoub%")->first()->id;
-            $user->creator_id = $creator_id;
+//            $creator_id = User::where('first_name', 'like', "%chahir%")->where('last_name', 'like', "%ayoub%")->first()->id;
+//            $user->creator_id = $creator_id;
             $user->save();
         };
 
@@ -119,7 +133,10 @@ class DatabaseSeeder extends Seeder
         };
 
         $fillWFMUsersWithOperationsWhenAll = function ($data) {
-            $user = User::where('matricule', 'like', "%$data[1]%")->first();
+            if (!User::where('matricule', 'like', "%".$data[1]."%")->first()) {
+                dd($data);
+            }
+            $user = User::where('matricule', 'like', "%".$data[1]."%")->first();
             $user->department_id = 5;
             if ($data[2] === "ALL") {
                 $operation_ids = Operation::pluck('id')->toArray();

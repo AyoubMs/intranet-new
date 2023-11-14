@@ -90,7 +90,7 @@ class DataController extends Controller
             case 'motifs_depart':
                 return MotifDepart::pluck('name')->toArray();
             case 'affect_user':
-                return UserController::affectUser($request->body);
+                return UserController::affectUser($request->body, $request);
             case 'edit_user':
                 return UserController::editUser($request->body, $request);
             case 'add_user':

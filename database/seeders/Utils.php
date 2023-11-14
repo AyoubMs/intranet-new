@@ -29,7 +29,7 @@ class Utils
                 $transRow = false;
             }
         } catch (Exception $e) {
-            info("error!");
+            info($e);
             $errors = new StdClass();
             $errors->injectionError = 'Please upload a new excel file';
             return $errors;

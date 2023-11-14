@@ -3,11 +3,13 @@
 namespace App\Http\Controllers;
 
 use App\Models\DemandeConge;
+use App\Models\Role;
 use App\Models\User;
 //use Illuminate\Database\Query\Builder;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Redis;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Reader\Xls;
 use PhpOffice\PhpSpreadsheet\Reader\Xlsx;
@@ -61,7 +63,7 @@ class DemandeCongeController extends Controller
         }
 
 
-//        return response()->file($demandsPath);
+        return response()->file($demandsPath);
     }
 
     /**
@@ -103,6 +105,11 @@ class DemandeCongeController extends Controller
                             $query->whereDate('date_fin', '<=', $value);
                         }
                         break;
+                    case 'user_ids':
+                        if (!empty($value)) {
+                            $query->whereIn('user_id', $value);
+                        }
+                        break;
                     case 'user_id':
                         if (!is_null($value)) {
                             $query->where('user_id', $value);
@@ -118,6 +125,19 @@ class DemandeCongeController extends Controller
         }
     }
 
+    protected static function getProfileCondition($role_id)
+    {
+        if ($role_id === Role::where('name', 'like', '%Superviseur%')->first()->id) {
+            return true;
+        } else if ($role_id === Role::where('name', 'like', '%Opération%')->first()->id) {
+            return true;
+        } else if ($role_id === Role::where('name', 'like', '%Chargé de planification et statistiques%')->first()->id) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+
     /**
      * @param $data
      * @return array
@@ -130,9 +150,17 @@ class DemandeCongeController extends Controller
         $dateDebutCongeFin = $data['date_debut_conge_fin'];
         $dateFinCongeDebut = $data['date_fin_conge_debut'];
         $dateFinCongeFin = $data['date_fin_conge_fin'];
+        $principal_user = User::where('matricule', json_decode(Redis::get($request->headers->get('Uuid')))->matricule)->first();
+        $user_ids = [];
+        if (self::getProfileCondition($principal_user->role_id)) {
+            foreach ($principal_user->operations as $operation) {
+                $user_ids = $operation->users->pluck('id');
+            }
+        }
+
         $user_id = User::where('matricule', $request['data']['matricule'])->first()->id ?? null;
-        $input = array('date_demande_debut' => $dateDemandeDebut, 'date_demande_fin' => $dateDemandeFin, 'date_debut_conge_debut' => $dateDebutCongeDebut, 'date_debut_conge_fin' => $dateDebutCongeFin, 'date_fin_conge_debut' => $dateFinCongeDebut, 'date_fin_conge_fin' => $dateFinCongeFin, 'user_id' => $user_id);
-        return $input;
+        //        info($user_ids->count());
+        return array('date_demande_debut' => $dateDemandeDebut, 'date_demande_fin' => $dateDemandeFin, 'date_debut_conge_debut' => $dateDebutCongeDebut, 'date_debut_conge_fin' => $dateDebutCongeFin, 'date_fin_conge_debut' => $dateFinCongeDebut, 'date_fin_conge_fin' => $dateFinCongeFin, 'user_id' => $user_id, 'user_ids' => $user_ids);
     }
 
 }

@@ -14,7 +14,7 @@ class OperationSeeder extends Seeder
     public function run(): void
     {
         $activeOperations = ['LEBARA-France', 'ORTEL Allemagne', 'WORLDLINE',
-            '.', 'SCARLET', 'ORTEL Belgique', 'TELENET', 'LFM',
+            'LEBARA-Allemagne', 'SCARLET', 'ORTEL Belgique', 'TELENET', 'LFM',
             'LEBARA', 'UNIT-T', 'BOFROST', 'MKB', 'SIP Communication', 'ENGIE',
             'VHC', 'ENECO', 'BAS', 'De Wilde & Baele', 'SOGEDES',
             'HYTECH', 'TUI FLY'];

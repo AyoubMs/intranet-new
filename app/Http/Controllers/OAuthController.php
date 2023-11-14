@@ -44,10 +44,10 @@ class OAuthController extends Controller
                 'first_name' => $firstName,
                 'last_name' => $lastName,
                 'email_1' => $azureUser->getEmail(),
-                'provider_id' => $azureUser->getId()
+                'provider_id' => $azureUser->getId(),
             ]);
         }
-        auth()->login($user, true);
+//        auth()->login($user, true);
         Redis::set($result['token'], json_encode($user));
 
         return redirect()->to('http://localhost:3000/dashboard');
