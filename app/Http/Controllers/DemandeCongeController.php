@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\DemandeConge;
+use App\Models\EtatDemandeConge;
 use App\Models\Role;
 use App\Models\User;
 //use Illuminate\Database\Query\Builder;
@@ -22,6 +23,74 @@ class DemandeCongeController extends Controller
     protected static function bundleConditionsAndQueries($input)
     {
         return self::getDemands($input);
+    }
+
+    protected static function getProfileCondition($role_id)
+    {
+        if ($role_id === Role::where('name', 'like', '%Superviseur%')->first()->id) {
+            return true;
+        } else if ($role_id === Role::where('name', 'like', '%Opération%')->first()->id) {
+            return true;
+        } else if ($role_id === Role::where('name', 'like', '%Chargé de planification et statistiques%')->first()->id) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    public static function getAffectedDemands($request)
+    {
+        $user = json_decode(Redis::get($request->headers->get('Uuid')));
+        $user = User::where('matricule', $user->matricule)->first();
+        list($user_id, $user_ids) = self::getUserIdsAndUserId($user, $user->matricule);
+        if (!empty($user_ids)) {
+            return DemandeConge::whereIn('user_id', ...array_merge($user_ids) ?? [])->where('etat_demande_id', EtatDemandeConge::where('etat_demande', 'created')->first()->id)->get();
+        }
+        return null;
+    }
+
+    public static function getLatestDemand($request)
+    {
+        $user = User::where('matricule', $request['data']['matricule'])->first();
+        if ($user) {
+            if (!$user->conges->isEmpty()) {
+                return $user->conges->toQuery()->orderBy('date_retour', 'desc')->first();
+            }
+        }
+        return null;
+    }
+
+    public static function createDemand($request)
+    {
+        $period = intval(date_diff(date_create($request['data']['date_fin']), date_create($request['data']['date_debut']))->format('%a')) + 1;
+
+        $user = User::where('matricule', $request['data']['matricule'])->first();
+
+        $demand = DemandeConge::factory()->create([
+            'date_demande' => today(),
+            'date_retour' => $request['data']['date_retour'],
+            'date_debut' => $request['data']['date_debut'],
+            'date_fin' => $request['data']['date_fin'],
+            'periode' => $period,
+            'etat_demande_id' => EtatDemandeConge::where('etat_demande', 'created')->first()->id,
+            'user_id' => $user->id
+        ]);
+
+        $solde_rjf = $user->solde_rjf;
+        if ($period >= $solde_rjf) {
+            $period = $period - $solde_rjf;
+            $user->solde_rjf = 0;
+            $user->solde_cp = $user->solde_cp - $period;
+        } else {
+            $user->solde_rjf = $solde_rjf - $period;
+        }
+
+        Redis::set($request->headers->get('Uuid'), json_encode($user));
+
+        $user->save();
+
+        return $demand;
+
     }
 
     public static function searchDemands($request)
@@ -107,7 +176,7 @@ class DemandeCongeController extends Controller
                         break;
                     case 'user_ids':
                         if (!empty($value)) {
-                            $query->whereIn('user_id', $value);
+                            $query->whereIn('user_id', ...array_merge($value));
                         }
                         break;
                     case 'user_id':
@@ -117,24 +186,11 @@ class DemandeCongeController extends Controller
                         break;
                 }
             }
-        })->with('user')->with('demand');
+        })->orderBy('etat_demande_id', 'asc')->with('user')->with('demand');
         if (!$export) {
             return $query->paginate();
         } else {
             return $query->get();
-        }
-    }
-
-    protected static function getProfileCondition($role_id)
-    {
-        if ($role_id === Role::where('name', 'like', '%Superviseur%')->first()->id) {
-            return true;
-        } else if ($role_id === Role::where('name', 'like', '%Opération%')->first()->id) {
-            return true;
-        } else if ($role_id === Role::where('name', 'like', '%Chargé de planification et statistiques%')->first()->id) {
-            return true;
-        } else {
-            return false;
         }
     }
 
@@ -150,17 +206,32 @@ class DemandeCongeController extends Controller
         $dateDebutCongeFin = $data['date_debut_conge_fin'];
         $dateFinCongeDebut = $data['date_fin_conge_debut'];
         $dateFinCongeFin = $data['date_fin_conge_fin'];
-        $principal_user = User::where('matricule', json_decode(Redis::get($request->headers->get('Uuid')))->matricule)->first();
-        $user_ids = [];
-        if (self::getProfileCondition($principal_user->role_id)) {
-            foreach ($principal_user->operations as $operation) {
-                $user_ids = $operation->users->pluck('id');
-            }
-        }
+        $principal_user = User::where('matricule', json_decode(Redis::get($request->headers->get('Uuid')))->matricule ?? '')->first();
+        list($user_id, $user_ids) = self::getUserIdsAndUserId($principal_user, $request['data']['matricule']);
 
-        $user_id = User::where('matricule', $request['data']['matricule'])->first()->id ?? null;
         //        info($user_ids->count());
         return array('date_demande_debut' => $dateDemandeDebut, 'date_demande_fin' => $dateDemandeFin, 'date_debut_conge_debut' => $dateDebutCongeDebut, 'date_debut_conge_fin' => $dateDebutCongeFin, 'date_fin_conge_debut' => $dateFinCongeDebut, 'date_fin_conge_fin' => $dateFinCongeFin, 'user_id' => $user_id, 'user_ids' => $user_ids);
+    }
+
+    /**
+     * @param $principal_user
+     * @param $matricule
+     * @return array
+     */
+    public static function getUserIdsAndUserId($principal_user, $matricule): array
+    {
+        $user_id = null;
+        $user_ids = [];
+        if (!is_null($principal_user)) {
+            if (self::getProfileCondition($principal_user->role_id)) {
+                foreach ($principal_user->operations as $operation) {
+                    $user_ids[] = $operation->users->pluck('id');
+                }
+            } else {
+                $user_id = User::where('matricule', $matricule ?? $principal_user->matricule)->first()->id ?? null;
+            }
+        }
+        return array($user_id, $user_ids);
     }
 
 }

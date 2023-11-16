@@ -15,7 +15,7 @@ class User extends Authenticatable
     protected $table = 'users';
     protected $guarded = [];
 
-    protected $with = ['team_type', 'role', 'operations', 'department', 'primaryLanguage', 'secondaryLanguage', 'identityTypes', 'sourcingType', 'nationality', 'familySituation', 'managers', 'operation', 'motif', 'comment'];
+    protected $with = ['team_type', 'role', 'operations', 'department', 'primaryLanguage', 'secondaryLanguage', 'identityTypes', 'sourcingType', 'nationality', 'familySituation', 'managers', 'operation', 'motif', 'comment', 'demandesEnCours'];
 
     /**
      * The attributes that are mass assignable.
@@ -47,6 +47,11 @@ class User extends Authenticatable
         'email_verified_at' => 'datetime',
         'password' => 'hashed',
     ];
+
+    public function demandesEnCours()
+    {
+        return $this->hasMany(DemandeConge::class)->where('etat_demande_id', EtatDemandeConge::whereNotIn('etat_demande', ['canceled', 'rejected', 'closed'])->pluck('id')->toArray());
+    }
 
     public function conges()
     {

@@ -8,6 +8,8 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Redis;
+use Illuminate\Database\Eloquent\Collection;
+
 
 class AuthenticatedSessionController extends Controller
 {
@@ -28,15 +30,11 @@ class AuthenticatedSessionController extends Controller
      */
     public function destroy(Request $request)
     {
-        Auth::guard('web')->logout();
+//        Auth::guard('web')->logout();
 //
 //        $request->session()->invalidate();
 //        info($request->token);
-        foreach (Redis::keys('*') as $key) {
-            if (str_contains(Redis::get($key), json_encode(json_decode($request->user)->user))) {
-                Redis::del($key);
-            }
-        }
+        Redis::del($request->headers->get('Uuid'));
 
         return response()->noContent();
     }

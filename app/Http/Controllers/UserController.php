@@ -187,7 +187,6 @@ class UserController extends Controller
         $last_names = [];
         $user = User::where('matricule', $body['matricule'])->first();
         list($operations, $names) = self::getOperationsAndNames($body, $operations, $names);
-        info($request);
         foreach ($names as $name) {
             $explosion = explode(' ', $name);
             $first_names[] = $explosion[0];
