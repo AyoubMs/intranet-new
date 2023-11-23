@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Comment;
+use App\Models\DemandeConge;
 use App\Models\IdentityType;
 use App\Models\Language;
 use App\Models\Nationality;
@@ -162,6 +163,18 @@ class UserController extends Controller
         return array($operations, $names);
     }
 
+    public static function getUser($request)
+    {
+        $user = json_decode(Redis::get($request->headers->get('Uuid')));
+        if (!is_null($user)) {
+            $user = User::where('matricule', $user->matricule ?? '')->first();
+            $user->totalDesDemandes = DemandeConge::where('user_id', $user->id)->count();
+//                    $user->demandesEnCours = DemandeConge::whereIn('etat_demande_id', EtatDemandeConge::whereNotIn('etat_demande', ['canceled', 'rejected', 'closed'])->pluck('id')->toArray())->count();
+            Redis::set($request->headers->get('Uuid'), $user);
+        }
+        return Redis::get($request->headers->get('Uuid'));
+    }
+
     public static function deactivateUser($body)
     {
         $validator = Validator::make($body, [
@@ -188,12 +201,13 @@ class UserController extends Controller
         $user = User::where('matricule', $body['matricule'])->first();
         list($operations, $names) = self::getOperationsAndNames($body, $operations, $names);
         foreach ($names as $name) {
+            $name = trim($name);
             $explosion = explode(' ', $name);
             $first_names[] = $explosion[0];
             $last_names[] = $explosion[1];
         }
         $operations_ids_array = Operation::whereIn('name', $operations)->pluck('id')->toArray();
-        $manager_ids = User::whereIn('first_name', $first_names)->whereIn('last_name', $last_names)->get();
+        $manager_ids = User::whereIn('first_name', $first_names)->whereIn('last_name', $last_names)->pluck('id')->toArray();
         $user_operations_ids = $user->operations->pluck('id')->toArray();
         $user_manager_ids = $user->managers->pluck('id')->toArray();
         foreach ($operations_ids_array as $operation_id) {
@@ -307,7 +321,11 @@ class UserController extends Controller
             $users = User::whereIn('id', array_merge(...$user_ids) ?? $user_ids)->when($input, function ($query, $input) {
                 self::filterWithInput($query, $input);
             })->get();
-            return (new Collection($users))->toQuery()->with('comment')->with('motif')->with('operation')->with('operations')->with('managers')->with('role')->paginate();
+            if (!(new Collection($users))->isEmpty()) {
+                return (new Collection($users))->toQuery()->with('comment')->with('motif')->with('operation')->with('operations')->with('managers')->with('role')->paginate();
+            } else {
+                return User::paginate();
+            }
         }
     }
 

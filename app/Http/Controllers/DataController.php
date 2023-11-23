@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Jobs\LoadDataFromDB;
 use App\Models\Comment;
 use App\Models\DemandeConge;
+use App\Models\EtatDemandeConge;
 use App\Models\FamilySituation;
 use App\Models\IdentityType;
 use App\Models\Language;
@@ -79,6 +80,12 @@ class DataController extends Controller
     public function getData(Request $request)
     {
         switch ($request['type']) {
+            case 'reject_demand':
+                return DemandeCongeController::rejectDemand($request);
+            case 'cancel_demand':
+                return DemandeCongeController::cancelDemand($request);
+            case 'accept_demand':
+                return DemandeCongeController::acceptDemand($request);
             case 'affected_demands':
                 return DemandeCongeController::getAffectedDemands($request);
             case 'latest_demand':
@@ -118,13 +125,7 @@ class DataController extends Controller
                 }
                 return 'null';
             case 'user':
-                $user = json_decode(Redis::get($request->headers->get('Uuid')));
-                if (!is_null($user)) {
-                    $user = User::where('matricule', $user->matricule ?? '')->first();
-                    $user->totalDesDemandes = DemandeConge::where('user_id', $user->id)->count();
-                    Redis::set($request->headers->get('Uuid'), $user);
-                }
-                return Redis::get($request->headers->get('Uuid'));
+                return UserController::getUser($request);
             case 'team':
                 $active = true;
                 if ($request['status'] === 'inactive_users') {

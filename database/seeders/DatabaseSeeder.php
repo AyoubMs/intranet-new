@@ -109,9 +109,12 @@ class DatabaseSeeder extends Seeder
         $fillWFMUsersWithOperationsPartial2 = function ($data) {
             $user = User::where('matricule', 'like', "%$data[1]%")->first();
             $user->department_id = 5;
-            if ($data[4] !== "") {
-                $operation_id = Operation::where('name', 'like', "%$data[4]%")->first()->id;
-                $user->operations()->attach($operation_id);
+            if ($data[4] !== "" and $data[4]) {
+                $operation = Operation::where('name', 'like', "%$data[4]%")->first();
+                if ($operation) {
+                    $operation_id = $operation->id;
+                    $user->operations()->attach($operation_id);
+                }
             }
 
             $user->save();
@@ -121,8 +124,11 @@ class DatabaseSeeder extends Seeder
             $user = User::where('matricule', 'like', "%$data[1]%")->first();
             $user->department_id = Department::where('name', 'like', '%wfm%')->first()->id;
             if ($data[2] !== "ALL") {
-                $operation_id = Operation::where('name', 'like', "%$data[2]%")->first()->id;
-                $user->operations()->attach($operation_id);
+                $operation = Operation::where('name', 'like', "%$data[2]%")->first();
+                if ($operation) {
+                    $operation_id = $operation->id;
+                    $user->operations()->attach($operation_id);
+                }
             }
             if ($data[3] !== "") {
                 $operation_id = Operation::where('name', 'like', "%$data[3]%")->first()->id;
