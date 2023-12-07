@@ -14,6 +14,9 @@ class Utils
             $transRow = true;
             while (($data = fgetcsv($csvData, 555, ',')) !== false) {
                 $congesPath = storage_path().'\app\public\conges.csv';
+//                if ($path === $congesPath) {
+//                    dd($data);
+//                }
                 if ($injection and $transRow) {
                     if (count($data) !== 3 and $data[3] !== '') {
                         $errors = new StdClass();

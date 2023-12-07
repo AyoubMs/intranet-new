@@ -39,6 +39,9 @@ class OAuthController extends Controller
             $user->email_1 = $azureUser->getEmail();
             $user->provider_id = $azureUser->getId();
             $user->save();
+        } else if ($user = User::where('email_1', $azureUser->getEmail())->first()) {
+            $user->provider_id = $azureUser->getId();
+            $user->save();
         } else {
             User::factory()->create([
                 'first_name' => $firstName,

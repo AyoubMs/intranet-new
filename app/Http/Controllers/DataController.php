@@ -14,6 +14,7 @@ use App\Models\Nationality;
 use App\Models\Operation;
 use App\Models\Role;
 use App\Models\SourcingType;
+use App\Models\TypeConge;
 use App\Models\User;
 use Database\Seeders\Utils;
 use Illuminate\Http\Client\Response;
@@ -80,6 +81,8 @@ class DataController extends Controller
     public function getData(Request $request)
     {
         switch ($request['type']) {
+            case 'type_demand_conge':
+                return TypeConge::all();
             case 'reject_demand':
                 return DemandeCongeController::rejectDemand($request);
             case 'cancel_demand':

@@ -37,7 +37,7 @@ class RoleSeeder extends Seeder
             'Responsable des moyens généraux',
             'Assistante moyens généraux et Communication',
             'Chargée de mission auprès de la direction',
-            'Head of Data Protection and internal Audit',
+            'Head of Data Protection and internal Audit', 'Data Protection Officer',
             'Stagiaire Marketing et communication',
             'Responsable IT, Réseaux et Sécurité', 'Stagiaire IT',
             'Stagiaire RH', 'Chargé des moyens généraux',

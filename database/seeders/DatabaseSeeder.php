@@ -19,7 +19,7 @@ class DatabaseSeeder extends Seeder
     /**
      * Seed the application's database.
      */
-    public function run(DepartmentSeeder $departmentSeeder, LanguageSeeder $languageSeeder, MotifDepartSeeder $motifDepartSeeder, OperationSeeder $operationSeeder, RoleSeeder $roleSeeder, TeamTypeSeeder $teamTypeSeeder, IdentityTypeSeeder $identityTypeSeeder, NationalitySeeder $nationalitySeeder, SourcingTypeSeeder $sourcingTypeSeeder, FamilySituationSeeder $familySituationSeeder, DemandeCongeSeeder $demandeCongeSeeder, EtatDemandeCongeSeeder $etatDemandeCongeSeeder): void
+    public function run(DepartmentSeeder $departmentSeeder, LanguageSeeder $languageSeeder, MotifDepartSeeder $motifDepartSeeder, OperationSeeder $operationSeeder, RoleSeeder $roleSeeder, TeamTypeSeeder $teamTypeSeeder, IdentityTypeSeeder $identityTypeSeeder, NationalitySeeder $nationalitySeeder, SourcingTypeSeeder $sourcingTypeSeeder, FamilySituationSeeder $familySituationSeeder, DemandeCongeSeeder $demandeCongeSeeder, EtatDemandeCongeSeeder $etatDemandeCongeSeeder, TypeCongeSeeder $typeCongeSeeder): void
     {
         $departmentSeeder->run();
         $languageSeeder->run();
@@ -30,6 +30,7 @@ class DatabaseSeeder extends Seeder
         $nationalitySeeder->run();
         $sourcingTypeSeeder->run();
         $familySituationSeeder->run();
+        $typeCongeSeeder->run();
 
         $allUsersPath = storage_path() . '\app\public\users.csv';
         $worldLineUsers = storage_path() . '\app\public\users_wl.csv';
@@ -67,14 +68,26 @@ class DatabaseSeeder extends Seeder
                     dd($data);
                 }
                 $user->role_id = Role::where('name', 'like', "%".trim($data[7])."%")->first()->id;
-            } else if (str_contains($data[3], 'superviseur')) {
+            } else if (strtolower($data[3]) === 'superviseur') {
                 $user->role_id = Role::where('name', 'like', "%Superviseur%")->first()->id;
-            } else if (str_contains($data[3], 'opsmanager')) {
+            } else if (strtolower($data[3]) === 'opsmanager') {
                 $user->role_id = Role::where('name', 'like', "%Opérations%")->first()->id;
-            } else if (str_contains($data[3], 'rh')) {
+            } else if (strtolower($data[3]) === 'rh') {
                 $user->role_id = Role::where('name', 'like', "%Responsable RH%")->first()->id;
-            } else if (str_contains($data[3], 'wfm')) {
+            } else if (strtolower($data[3]) === 'wfm') {
                 $user->role_id = Role::where('name', 'like', "%planification%")->first()->id;
+            } else if (strtolower($data[3]) === 'directeur') {
+                $user->role_id = Role::where('name', 'like', "directeur")->first()->id;
+            } else if (strtolower($data[3]) === 'vigie') {
+                $user->role_id = Role::where('name', "vigie")->first()->id;
+            } else if (strtolower($data[3]) === 'coordinateur vigie') {
+                $user->role_id = Role::where('name', "coordinateur vigie")->first()->id;
+            } else if (strtolower($data[3]) === 'coordinateur cps') {
+                $user->role_id = Role::where('name', "coordinateur cps")->first()->id;
+            } else if (strtolower($data[3]) === 'correction incoherence') {
+                $user->role_id = Role::where('name', 'like', "%incoherence%")->first()->id;
+            } else if (strtolower($data[3]) === 'head operational excellence') {
+                $user->role_id = Role::where('name', 'like', "%excellence%")->first()->id;
             } else {
                 $user->role_id = 1;
             }

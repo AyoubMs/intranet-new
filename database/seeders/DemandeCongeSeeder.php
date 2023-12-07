@@ -4,12 +4,25 @@ namespace Database\Seeders;
 
 use App\Models\DemandeConge;
 use App\Models\EtatDemandeConge;
+use App\Models\TypeConge;
 use App\Models\User;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
 class DemandeCongeSeeder extends Seeder
 {
+    protected static function getTypeConge($data)
+    {
+        if ($data[13] or $data[14] or $data[15] or $data[16]) {
+            return TypeConge::where('name', 'like', 'conge paye')->first()->id;
+        } else if ($data[17] or $data[19]) {
+            return TypeConge::where('name', 'like', 'evenement special')->first()->id;
+        } else if ($data[20] or $data[21]) {
+            return TypeConge::where('name', 'like', 'sans solde')->first()->id;
+        }
+        return 1;
+    }
+
     protected static function getPeriod($dateDebut, $dateFin)
     {
         return $dateDebut . ' - ' . $dateFin;
@@ -26,7 +39,7 @@ class DemandeCongeSeeder extends Seeder
             } else if (str_contains($state, 'ops')) {
                 return EtatDemandeConge::where('etat_demande', 'like', "validated by %ops%")->first()->id;
             } else if (str_contains($state, 'tous')) {
-                return EtatDemandeConge::where('etat_demande', 'like', "validated by clo%")->first()->id;
+                return EtatDemandeConge::where('etat_demande', 'like', "clo%")->first()->id;
             } else if (str_contains($state, 'super')) {
                 return EtatDemandeConge::where('etat_demande', 'like', "validated by %sup%")->first()->id;
             }
@@ -85,7 +98,9 @@ class DemandeCongeSeeder extends Seeder
                     'date_debut' => self::getDate($datesDebut),
                     'date_fin' => self::getDate($datesFin),
                     'etat_demande_id' => self::getEtatDemandeID($data[23]),
-                    'user_id' => self::getUserID($data[2])
+                    'user_id' => self::getUserID($data[2]),
+                    'type_conge_id' => self::getTypeConge($data),
+                    'nombre_jours' => $data[10]
                 ]);
 //                $demande_state = EtatDemandeConge::where('id', self::getEtatDemandeID($data[23]))->first();
 //                if (str_contains($demande_state->etat_demande, 'cancel') or str_contains($demande_state->etat_demande, 'close')) {

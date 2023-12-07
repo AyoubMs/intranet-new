@@ -198,6 +198,7 @@ class UserController extends Controller
         $names = [];
         $first_names = [];
         $last_names = [];
+        info($body);
         $user = User::where('matricule', $body['matricule'])->first();
         list($operations, $names) = self::getOperationsAndNames($body, $operations, $names);
         foreach ($names as $name) {
@@ -233,6 +234,9 @@ class UserController extends Controller
             if (!in_array($operation_id, $user_operations_ids)) {
                 $user->operations()->attach($operation_id);
             }
+        }
+        if ($role = Role::where('name', $body['profile'])->first()) {
+            $user->role_id = $role->id;
         }
         $user->save();
         return "done";

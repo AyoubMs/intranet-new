@@ -12,7 +12,7 @@ class EtatDemandeCongeSeeder extends Seeder
      */
     public function run(): void
     {
-        $states = ['created', 'validated by supervisor', 'validated by ops manager', 'validated by wfm', 'rejected by supervisor', 'rejected by ops manager', 'rejected by wfm', 'rejected by hr', 'rejected', 'canceled', 'closed'];
+        $states = ['created', 'validated by director', 'validated by supervisor', 'validated by ops manager', 'validated by wfm', 'validated by vigie', 'validated by cps', 'validated by cci', 'validated by coordinateur vigie', 'validated by coordinateur cps', 'validated by head of operational excellence', 'validated by resp hr', 'validated by charge hr', 'rejected by director', 'rejected by supervisor', 'rejected by ops manager', 'rejected by wfm', 'rejected by vigie', 'rejected by cps', 'rejected by cci', 'rejected by coordinateur vigie', 'rejected by coordinateur cps', 'rejected by head of operational excellence', 'rejected by charge hr', 'rejected by resp hr', 'rejected by hr', 'rejected', 'canceled', 'closed'];
 
         foreach ($states as $state) {
             EtatDemandeConge::factory()->create([

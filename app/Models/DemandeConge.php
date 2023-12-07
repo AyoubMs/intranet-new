@@ -9,6 +9,7 @@ class DemandeConge extends Model
 {
     use HasFactory;
     protected $guarded = [];
+    protected $with = ['typeDemande'];
 
     public function user()
     {
@@ -18,5 +19,10 @@ class DemandeConge extends Model
     public function demand()
     {
         return $this->belongsTo(EtatDemandeConge::class, 'etat_demande_id');
+    }
+
+    public function typeDemande()
+    {
+        return $this->belongsTo(TypeConge::class, 'type_conge_id');
     }
 }

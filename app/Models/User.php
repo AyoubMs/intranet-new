@@ -50,7 +50,7 @@ class User extends Authenticatable
 
     public function demandesEnCours()
     {
-        return $this->hasMany(DemandeConge::class)->whereIn('etat_demande_id', EtatDemandeConge::whereNotIn('etat_demande', ['canceled', 'rejected', 'closed'])->pluck('id')->toArray());
+        return $this->hasMany(DemandeConge::class)->whereIn('etat_demande_id', EtatDemandeConge::whereNotIn('etat_demande', ['canceled', 'rejected', 'closed', 'rejected by hr', 'rejected by wfm', 'rejected by director', 'rejected by supervisor', 'rejected by ops manager'])->pluck('id')->toArray());
     }
 
     public function conges()
