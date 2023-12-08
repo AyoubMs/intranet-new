@@ -6,6 +6,7 @@ use App\Models\DemandeConge;
 use App\Models\DemandeCongeStack;
 use App\Models\EtatDemandeConge;
 use App\Models\Role;
+use App\Models\TypeConge;
 use App\Models\User;
 
 //use Illuminate\Database\Query\Builder;
@@ -463,6 +464,8 @@ class DemandeCongeController extends Controller
                 $demand->etat_demande_id = EtatDemandeConge::where('etat_demande', 'validated by director')->first()->id;
             }
         }
+        $demand->type_conge_id = $request['data']['type_conge_id'];
+        $demand->nombre_jours = doubleval($request['data']['nombre_jours_confirmed']);
         $demand->save();
         return $demand;
     }
@@ -557,10 +560,11 @@ class DemandeCongeController extends Controller
 
     public static function createDemand($request)
     {
-        $period = $request['nombre_jours'];
+        $period = doubleval($request['data']['nombre_jours']);
 
         $user = User::where('matricule', $request['data']['matricule'])->first();
 
+        $type_conge = $request['data']['type_conge'];
         $demand = DemandeConge::factory()->create([
             'date_demande' => today(),
             'date_retour' => $request['data']['date_retour'],
@@ -569,7 +573,8 @@ class DemandeCongeController extends Controller
             'periode' => $request['data']['date_debut'] . " - " . $request['data']['date_fin'],
             'etat_demande_id' => EtatDemandeConge::where('etat_demande', 'created')->first()->id,
             'user_id' => $user->id,
-            'nombre_jours' => $period
+            'nombre_jours' => $period,
+            'type_conge_id' => self::getTypeCongeId($type_conge)
         ]);
 
         $solde_rjf = $user->solde_rjf;
@@ -578,16 +583,21 @@ class DemandeCongeController extends Controller
             'user_id' => $user->id
         ]);
 
-        if ($period >= $solde_rjf) {
-            $period = $period - $solde_rjf;
-            $user->solde_rjf = 0;
-            $user->solde_cp = $user->solde_cp - $period;
-            $demand_stack_elem->solde_cp = $period;
-            $demand_stack_elem->solde_rjf = $solde_rjf;
+        if ($type_conge === "conge paye") {
+            if ($period >= $solde_rjf) {
+                $period = $period - $solde_rjf;
+                $user->solde_rjf = 0;
+                $user->solde_cp = $user->solde_cp - $period;
+                $demand_stack_elem->solde_cp = $period;
+                $demand_stack_elem->solde_rjf = $solde_rjf;
+            } else {
+                $user->solde_rjf = $solde_rjf - $period;
+                $demand_stack_elem->solde_cp = 0;
+                $demand_stack_elem->solde_rjf = $period;
+            }
         } else {
-            $user->solde_rjf = $solde_rjf - $period;
             $demand_stack_elem->solde_cp = 0;
-            $demand_stack_elem->solde_rjf = $period;
+            $demand_stack_elem->solde_rjf = 0;
         }
 
         $demand_stack_elem->save();
@@ -782,6 +792,15 @@ class DemandeCongeController extends Controller
             return $role_ids;
         }
         return User::whereIn('role_id', $role_ids)->pluck('id')->toArray();
+    }
+
+    /**
+     * @param $type_conge
+     * @return mixed
+     */
+    protected static function getTypeCongeId($type_conge)
+    {
+        return TypeConge::where('name', 'like', $type_conge)->first()->id;
     }
 
 }
