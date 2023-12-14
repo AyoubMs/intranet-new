@@ -15,7 +15,8 @@ class User extends Authenticatable
     protected $table = 'users';
     protected $guarded = [];
 
-    protected $with = ['team_type', 'role', 'operations', 'department', 'primaryLanguage', 'secondaryLanguage', 'identityTypes', 'sourcingType', 'nationality', 'familySituation', 'managers', 'operation', 'motif', 'comment', 'demandesEnCours'];
+//    protected $with = ['team_type', 'role', 'operations', 'department', 'primaryLanguage', 'secondaryLanguage', 'identityTypes', 'sourcingType', 'nationality', 'familySituation', 'managers', 'operation', 'motif', 'comment'];
+protected $with = ['role', 'team_type', 'operation', 'department', 'primaryLanguage', 'secondaryLanguage'];
 
     /**
      * The attributes that are mass assignable.
@@ -50,7 +51,7 @@ class User extends Authenticatable
 
     public function demandesEnCours()
     {
-        return $this->hasMany(DemandeConge::class)->whereIn('etat_demande_id', EtatDemandeConge::whereNotIn('etat_demande', ['canceled', 'rejected', 'closed', 'rejected by hr', 'rejected by wfm', 'rejected by director', 'rejected by supervisor', 'rejected by ops manager'])->pluck('id')->toArray());
+        return $this->hasMany(DemandeConge::class)->whereIn('etat_demande_id', EtatDemandeConge::whereNotIn('etat_demande', ['canceled', 'rejected', 'closed', 'rejected by hr', 'rejected by wfm', 'rejected by director', 'rejected by supervisor', 'rejected by ops manager', 'rejected by resp it'])->pluck('id')->toArray());
     }
 
     public function conges()

@@ -73,8 +73,9 @@ class DataController extends Controller
         return User::where('matricule', 'like', "%$search%")->first();
     }
 
-    function getDataByType($type, $query) {
-        dispatch(new LoadDataFromDB($query, $type));
+    public static function getDataByType($type, $query, $isRoles = false)
+    {
+        dispatch(new LoadDataFromDB($query, $type, $isRoles, [], [], false));
         return json_decode(Redis::get($type));
     }
 
@@ -87,8 +88,30 @@ class DataController extends Controller
                 return DemandeCongeController::rejectDemand($request);
             case 'cancel_demand':
                 return DemandeCongeController::cancelDemand($request);
-            case 'accept_demand':
-                return DemandeCongeController::acceptDemand($request);
+            case 'refresh_demand_data':
+                return DemandeCongeController::refreshDemand($request);
+            case 'accept_demand_ops_manager':
+                return DemandeCongeController::acceptDemandOpsManager($request);
+            case 'accept_demand_it_responsable':
+                return DemandeCongeController::acceptDemandITResponsable($request);
+            case 'accept_demand_supervisor':
+                return DemandeCongeController::acceptDemandSupervisor($request);
+            case 'accept_demand_vigie':
+                return DemandeCongeController::acceptDemandVigie($request);
+            case 'accept_demand_cps':
+                return DemandeCongeController::acceptDemandCPS($request);
+            case 'accept_demand_cci':
+                return DemandeCongeController::acceptDemandCCI($request);
+            case 'accept_demand_coordinator_vigie':
+                return DemandeCongeController::acceptDemandCoordinatorVigie($request);
+            case 'accept_demand_coordinator_cps':
+                return DemandeCongeController::acceptDemandCoordinatorCPS($request);
+            case 'accept_demand_head_of_operational_excellence':
+                return DemandeCongeController::acceptDemandHeadOfOperationalExcellence($request);
+            case 'accept_demand_responsable_rh_or_charge_rh_or_close':
+                return DemandeCongeController::acceptDemandResponsableRHOrChargeRHOrClose($request);
+            case 'accept_demand_director':
+                return DemandeCongeController::acceptDemandDirector($request);
             case 'affected_demands':
                 return DemandeCongeController::getAffectedDemands($request);
             case 'latest_demand':
