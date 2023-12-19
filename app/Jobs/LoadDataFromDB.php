@@ -104,7 +104,24 @@ class LoadDataFromDB implements ShouldQueue
             $role_ids = Role::where('name', 'like', "%charge% rh")->pluck('id')->toArray();
         } else if ($this->type === 'getResponsableHRIds') {
             $role_ids = Role::where('name', 'responsable rh')->pluck('id')->toArray();
+        } else if ($this->type === 'getDeveloperIds') {
+            $role_ids = Role::where('name', 'like', "%dev%")->pluck('id')->toArray();
+        } else if ($this->type === 'getAgentMGIds') {
+            $role_ids = Role::where('name', 'like', "%moyen%")->where('name', 'like', "agent %")->pluck('id')->toArray();
+        } else if ($this->type === 'getResponsableMGIds') {
+            $role_ids = Role::where('name', 'like', "%moyen%")->where('name', 'like', "responsable %")->pluck('id')->toArray();
+        } else if ($this->type === 'getInfirmiereTravailIds') {
+            $role_ids = Role::where('name', 'like', "infir%")->pluck('id')->toArray();
+        } else if ($this->type === 'getChargeMissionAupresDirectionIds') {
+            $role_ids = Role::where('name', 'like', "charge%")->where('name', 'like', "%direction")->pluck('id')->toArray();
+        } else if ($this->type === 'getChargeCommMktgIds') {
+            $role_ids = Role::where('name', 'like', 'charge%')->where('name', 'like', "%marketing%")->pluck('id')->toArray();
+        } else if ($this->type === 'getCoordinatorQualiteFormationIds') {
+            $role_ids = Role::where('name', 'like', "coordinateur %")->where('name', 'like', "%qualite%")->where('name', 'like', "%formation")->pluck('id')->toArray();
+        } else if ($this->type === 'getChargeFormationIds') {
+            $role_ids = Role::where('name', 'like', 'charge%')->where('name', 'like', "%formation")->pluck('id')->toArray();
         }
+
         if ($this->isRoles) {
             Redis::set($this->type."_roles", json_encode($role_ids));
             return '';

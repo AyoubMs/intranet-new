@@ -90,6 +90,8 @@ class DataController extends Controller
                 return DemandeCongeController::cancelDemand($request);
             case 'refresh_demand_data':
                 return DemandeCongeController::refreshDemand($request);
+            case "accept_demand_coordinator_qualite_formation":
+                return DemandeCongeController::acceptDemandCoordinatorQualiteFormation($request);
             case 'accept_demand_ops_manager':
                 return DemandeCongeController::acceptDemandOpsManager($request);
             case 'accept_demand_it_responsable':

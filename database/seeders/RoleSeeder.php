@@ -23,6 +23,7 @@ class RoleSeeder extends Seeder
             'Chargé de recrutement', 'Chargé de Qualité et Process', 'Directeur', 'Directeur de Site', 'Directrice de Site',
             'Directeur Ressources Humaines',
             'Chargée de Communication et moyens Généraux',
+            'Chargé de Communication et moyens Généraux',
             'Coordinateur Qualité Formation',
             'Coursier', 'Coordinateur Vigie',
             'Chargée de Communication',
@@ -43,10 +44,12 @@ class RoleSeeder extends Seeder
             'Stagiaire RH', 'Chargé des moyens généraux',
             'Responsable Département RH', "Responsable d'opérations",
             'Chargée de communication Marketing et Evénementiel',
+            'Chargé de communication Marketing et Evénementiel',
             'Stagiaire Communication et Marketing', 'Stagiaire Juriste',
             'Stagiaire It Dévloppeur', 'RPA Developer',
             'Full Stack Javascript Developer', 'Chargée de recrutement',
             'Developpeur', 'Stagiaire Assistante de Direction',
+            'Responsable Qualité Formation et Recrutement',
             'Coordinatrice Qualité Formation', 'Expert métier FR', 'Expert métier NL', 'Agent FR', 'Agent NL'];
 
         foreach ($profiles as $profile) {

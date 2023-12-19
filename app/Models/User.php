@@ -16,7 +16,7 @@ class User extends Authenticatable
     protected $guarded = [];
 
 //    protected $with = ['team_type', 'role', 'operations', 'department', 'primaryLanguage', 'secondaryLanguage', 'identityTypes', 'sourcingType', 'nationality', 'familySituation', 'managers', 'operation', 'motif', 'comment'];
-protected $with = ['role', 'team_type', 'operation', 'department', 'primaryLanguage', 'secondaryLanguage'];
+protected $with = ['role', 'team_type', 'operation', 'department', 'primaryLanguage', 'secondaryLanguage', 'demandesEnCours'];
 
     /**
      * The attributes that are mass assignable.
