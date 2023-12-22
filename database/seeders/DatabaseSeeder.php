@@ -19,7 +19,7 @@ class DatabaseSeeder extends Seeder
     /**
      * Seed the application's database.
      */
-    public function run(DepartmentSeeder $departmentSeeder, LanguageSeeder $languageSeeder, MotifDepartSeeder $motifDepartSeeder, OperationSeeder $operationSeeder, RoleSeeder $roleSeeder, TeamTypeSeeder $teamTypeSeeder, IdentityTypeSeeder $identityTypeSeeder, NationalitySeeder $nationalitySeeder, SourcingTypeSeeder $sourcingTypeSeeder, FamilySituationSeeder $familySituationSeeder, DemandeCongeSeeder $demandeCongeSeeder, EtatDemandeCongeSeeder $etatDemandeCongeSeeder, TypeCongeSeeder $typeCongeSeeder): void
+    public function run(DepartmentSeeder $departmentSeeder, LanguageSeeder $languageSeeder, MotifDepartSeeder $motifDepartSeeder, OperationSeeder $operationSeeder, RoleSeeder $roleSeeder, TeamTypeSeeder $teamTypeSeeder, IdentityTypeSeeder $identityTypeSeeder, NationalitySeeder $nationalitySeeder, SourcingTypeSeeder $sourcingTypeSeeder, FamilySituationSeeder $familySituationSeeder, DemandeCongeSeeder $demandeCongeSeeder, EtatDemandeCongeSeeder $etatDemandeCongeSeeder, TypeCongeSeeder $typeCongeSeeder, ModificationSoldeCommentsSeeder $modificationSoldeCommentsSeeder): void
     {
         $departmentSeeder->run();
         $languageSeeder->run();
@@ -31,6 +31,7 @@ class DatabaseSeeder extends Seeder
         $sourcingTypeSeeder->run();
         $familySituationSeeder->run();
         $typeCongeSeeder->run();
+        $modificationSoldeCommentsSeeder->run();
 
         $allUsersPath = storage_path() . '\app\public\users.csv';
         $worldLineUsers = storage_path() . '\app\public\users_wl.csv';

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Jobs\AcceptDemandJob;
 use App\Jobs\LoadDataFromDB;
 use App\Models\DemandeConge;
+use App\Models\DemandeCongeLogs;
 use App\Models\DemandeCongeStack;
 use App\Models\EtatDemandeConge;
 use App\Models\Role;
@@ -235,15 +236,17 @@ class DemandeCongeController extends Controller
                         }
                         break;
                     case 'user_ids':
-                        if (!empty($value) and !self::isHR($input['role']->id) and !self::isCoordinator($input['role']->id)
-                        ) {
-                            $user_ids = array_merge(...$value);
-                            $query->whereIn('user_id', $user_ids);
-                        } else if (self::isSupervisor($input['role']->id)) {
-                            $query->whereIn('user_id', $value);
-                        } else if (self::isCoordinator($input['role']->id)) {
-                            $user_ids = array_merge(...$value);
-                            $query->whereIn('user_id', $user_ids);
+                        if (is_null($input['matricule'])) {
+                            if (!empty($value) and !self::isHR($input['role']->id) and !self::isCoordinator($input['role']->id)
+                            ) {
+                                $user_ids = array_merge(...$value);
+                                $query->whereIn('user_id', $user_ids);
+                            } else if (self::isSupervisor($input['role']->id)) {
+                                $query->whereIn('user_id', $value);
+                            } else if (self::isCoordinator($input['role']->id)) {
+                                $user_ids = array_merge(...$value);
+                                $query->whereIn('user_id', $user_ids);
+                            }
                         }
                         break;
                     case 'user_id':
@@ -266,7 +269,7 @@ class DemandeCongeController extends Controller
                             $user_ids[] = array_merge(...$input['supervisor_ids']);
                             $user_ids[] = array_merge(...$input['agent_ids']);
                             $user_ids[] = self::getOpsManagersIds('');
-                            $user_ids[] = Role::where('name', 'like', '%operation%')->where('name', 'like', 'head%')->pluck('id')->toArray();
+                            $user_ids[] = self::getHeadOfOperationalExcellenceIds('roles');
                         }
                         if (self::isDirector($input['role']->id)) {
                             $user_ids[] = self::getSupervisorIds("");
@@ -286,9 +289,16 @@ class DemandeCongeController extends Controller
                         break;
                     case 'role':
                         $proprietary_demands = self::getDataByType('proprietary_demands', "", "", EtatDemandeConge::pluck('id')->toArray(), array($input['principal_user']->id)) ?? [];
-                        if (self::isCoordinatorQualiteFormation($value->id)) {
-                            $charge_formation_demands_for_coordinator_qualite_formation_ids = DemandeConge::whereNotIn('etat_demande_id', [self::getEtatDemande('canceled')])->whereIn('user_id', self::getChargeFormationIds(''))->pluck('id')->toArray();
-                            $query->orWhereIn('id', $charge_formation_demands_for_coordinator_qualite_formation_ids)->orWhereIn('id', $proprietary_demands);
+                        if (self::isResponsableQualiteFormation($value->id) and is_null($input['matricule'])) {
+                            $charge_formation_demands_for_resp_qualite_formation_ids = self::getDataByType('charge_formation_demands_for_resp_qualite_formation_ids' . $input['principal_user']->id, '', false, EtatDemandeConge::whereNot('etat_demande', 'canceled')->pluck('id')->toArray(), self::getChargeFormationIds('')) ?? [];
+                            $charge_qualite_process_demands_for_responsable_qualite_formation_ids = self::getDataByType('charge_qualite_process_demands_for_responsable_qualite_formation_ids' . $input['principal_user']->id, '', false, EtatDemandeConge::whereNot('etat_demande', 'canceled')->pluck('id')->toArray(), self::getChargeQualiteProcessIds('')) ?? [];
+                            $charge_recrutement_demands_for_responsable_qualite_formation_ids = self::getDataByType('charge_recrutement_demands_for_responsable_qualite_formation_ids' . $input['principal_user']->id, '', false, EtatDemandeConge::whereNot('etat_demande', 'canceled')->pluck('id')->toArray(), self::getChargeRecrutementIds('')) ?? [];
+                            $responsable_formation_demands_for_resp_qualite_formation_ids = self::getDataByType('responsable_formation_demands_for_resp_qualite_formation_ids' . $input['principal_user']->id, '', false, EtatDemandeConge::whereNot('etat_demande', 'canceled')->pluck('id')->toArray(), self::getResponsableFormationIds('')) ?? [];
+                            $query->orWhereIn('id', $charge_formation_demands_for_resp_qualite_formation_ids)->orWhereIn('id', $charge_qualite_process_demands_for_responsable_qualite_formation_ids)->orWhereIn('id', $charge_recrutement_demands_for_responsable_qualite_formation_ids)->orWhereIn('id', $responsable_formation_demands_for_resp_qualite_formation_ids)->orWhereIn('id', $proprietary_demands);
+                        } else if (self::isCoordinatorQualiteFormation($value->id) and is_null($input['matricule'])) {
+                            $charge_formation_demands_for_coordinator_qualite_formation_ids = self::getDataByType('charge_formation_demands_for_coordinator_qualite_formation_ids' . $input['principal_user']->id, '', false, EtatDemandeConge::whereNot('etat_demande', 'canceled')->pluck('id')->toArray(), self::getChargeFormationIds('')) ?? [];
+                            $charge_qualite_process_demands_for_coordinator_qualite_formation_ids = self::getDataByType('charge_qualite_process_demands_for_coordinator_qualite_formation_ids' . $input['principal_user']->id, '', false, EtatDemandeConge::whereNot('etat_demande', 'canceled')->pluck('id')->toArray(), self::getChargeQualiteProcessIds('')) ?? [];
+                            $query->orWhereIn('id', $charge_qualite_process_demands_for_coordinator_qualite_formation_ids)->orWhereIn('id', $charge_formation_demands_for_coordinator_qualite_formation_ids)->orWhereIn('id', $proprietary_demands);
                         } else if (self::isWFM($value->id)) {
                             if (is_null($input['matricule'])) {
                                 $query->whereNotIn('etat_demande_id', EtatDemandeConge::where('etat_demande', 'created')->pluck('id')->toArray());
@@ -323,7 +333,7 @@ class DemandeCongeController extends Controller
                                 $query->orWhereIn('user_id', $user_ids);
                             }
                         } else if (self::isOpsManager($value->id) and !self::isHeadOfOperationalExcellence($value->id) and !empty($input['supervisor_ids'])) {
-                            $supervisor_created_demands = DemandeConge::where('etat_demande_id', EtatDemandeConge::where('etat_demande', 'created')->first()->id)->whereIn('user_id', $input['supervisor_ids'])->pluck('id')->toArray();
+                            $supervisor_created_demands = self::getDataByType('supervisor_created_demands_for_ops_manager' . $input['principal_user']->id, '', false, array(self::getEtatDemande('created')), $input['supervisor_ids']) ?? [];
                             $query->whereNotIn('etat_demande_id', EtatDemandeConge::where('etat_demande', 'created')->pluck('id')->toArray());
                             if (is_null($input['matricule'])) {
                                 $query->orWhereIn('id', $proprietary_demands)->orWhereIn('id', $supervisor_created_demands);
@@ -334,60 +344,81 @@ class DemandeCongeController extends Controller
                             }
                             if (self::isResponsableRH($value->id) and is_null($input['matricule'])) {
                                 if (!str_contains($input['matricule'], $input['principal_user']->matricule)) {
-                                    $opsmanager_created_demands = DemandeConge::where('etat_demande_id', EtatDemandeConge::where('etat_demande', 'created')->first()->id)->where('user_id', self::getOpsManagersIds(''))->pluck('id')->toArray();
-                                    $developer_created_demands = DemandeConge::where('etat_demande_id', self::getEtatDemande('created'))->whereIn('user_id', self::getDeveloperIds(""))->pluck('id')->toArray();
-                                    $agent_mg_created_demands = DemandeConge::where('etat_demande_id', self::getEtatDemande('created'))->whereIn('user_id', self::getAgentMGIds(''))->pluck('id')->toArray();
-                                    $wfm_agents_demands = DemandeConge::whereIn('etat_demande_id', EtatDemandeConge::whereIn('etat_demande', ['validated by director'])->pluck('id')->toArray())->whereIn('user_id', self::getWFMAgentsIds())->pluck('id')->toArray();
-                                    $charge_rh_demands = DemandeConge::whereIn('etat_demande_id', EtatDemandeConge::whereIn('etat_demande', ['created'])->pluck('id')->toArray())->whereIn('user_id', self::getChargeRHIds(""))->pluck('id')->toArray();
-                                    $resp_mg_created_demands = DemandeConge::where('etat_demande_id', self::getEtatDemande('created'))->whereIn('user_id', self::getResponsableMGIds(''))->pluck('id')->toArray();
-                                    $resp_mg_validated_by_director_demands = DemandeConge::where('etat_demande_id', self::getEtatDemande('validated by director'))->whereIn('user_id', self::getResponsableMGIds(''))->pluck('id')->toArray();
-                                    $infirmiere_travail_created_demands = DemandeConge::where('etat_demande_id', self::getEtatDemande('created'))->whereIn('user_id', self::getInfirmiereTravailIds(''))->pluck('id')->toArray();
-                                    $charge_mission_aupres_direction_validated_by_director = DemandeConge::where('etat_demande_id', self::getEtatDemande('validated by director'))->whereIn('user_id', self::getChargeMissionAupresDirectionIds(''))->pluck('id')->toArray();
-                                    $charge_formation_demands_for_coordinator_qualite_formation_ids = DemandeConge::where('etat_demande_id', self::getEtatDemande('validated by coordinateur qualite formation'))->whereIn('user_id', self::getChargeFormationIds(''))->pluck('id')->toArray();
-                                    $demand_ids = [];
-                                    $demand_ids[] = $opsmanager_created_demands;
-                                    $demand_ids[] = $wfm_agents_demands;
-                                    $demand_ids[] = $charge_rh_demands;
-                                    $demand_ids[] = $developer_created_demands;
-                                    $demand_ids[] = $agent_mg_created_demands;
-                                    $demand_ids[] = $resp_mg_created_demands;
-                                    $demand_ids[] = $resp_mg_validated_by_director_demands;
-                                    $demand_ids[] = $infirmiere_travail_created_demands;
-                                    $demand_ids[] = $charge_mission_aupres_direction_validated_by_director;
-                                    $demand_ids[] = $charge_formation_demands_for_coordinator_qualite_formation_ids;
-                                    $demand_ids = array_merge(...$demand_ids);
-                                    $query->orWhereIn('id', $demand_ids)->orWhereIn('id', $proprietary_demands);
+                                    $opsmanager_created_demands_for_resp_hr = self::getDataByType('opsmanager_created_demands_resp_hr' . $input['principal_user']->id, '', false, array(self::getEtatDemande('created')), self::getOpsManagersIds('')) ?? [];
+                                    $developer_created_demands_for_resp_hr = self::getDataByType('developer_created_demands_resp_hr' . $input['principal_user']->id, '', false, array(self::getEtatDemande('created')), self::getDeveloperIds('')) ?? [];
+                                    $agent_mg_created_demands_for_resp_hr = self::getDataByType('agent_mg_created_demands_resp_hr' . $input['principal_user']->id, '', false, array(self::getEtatDemande('created')), self::getAgentMGIds('')) ?? [];
+                                    $wfm_agents_demands_for_resp_hr = self::getDataByType('wfm_agents_demands_resp_hr' . $input['principal_user']->id, '', false, array(self::getEtatDemande('validated by director')), self::getWFMAgentsIds('')) ?? [];
+                                    $charge_rh_demands_for_resp_hr = self::getDataByType('charge_rh_demands_resp_hr' . $input['principal_user']->id, '', false, array(self::getEtatDemande('created')), self::getChargeRHIds('')) ?? [];
+                                    $resp_mg_created_demands_for_resp_hr = self::getDataByType('resp_mg_created_demands_resp_hr' . $input['principal_user']->id, '', false, array(self::getEtatDemande('created')), self::getResponsableMGIds('')) ?? [];
+                                    $resp_mg_validated_by_director_demands_for_resp_hr = self::getDataByType('resp_mg_validated_by_director_demands_resp_hr' . $input['principal_user']->id, '', false, array(self::getEtatDemande('validated by director')), self::getResponsableMGIds('')) ?? [];
+                                    $infirmiere_travail_created_demands_for_resp_hr = self::getDataByType('infirmiere_travail_created_demands_resp_hr' . $input['principal_user']->id, '', false, array(self::getEtatDemande('created')), self::getInfirmiereTravailIds('')) ?? [];
+                                    $charge_mission_aupres_direction_validated_by_director_for_resp_hr = self::getDataByType('charge_mission_aupres_direction_validated_by_director_demands_resp_hr' . $input['principal_user']->id, '', false, array(self::getEtatDemande('validated by director')), self::getChargeMissionAupresDirectionIds('')) ?? [];
+                                    $charge_formation_demands_for_coordinator_qualite_formation_ids_for_resp_hr = self::getDataByType('charge_formation_demands_for_coordinator_qualite_formation_ids_resp_hr' . $input['principal_user']->id, '', false, array(self::getEtatDemande('validated by coordinateur qualite formation')), self::getChargeFormationIds('')) ?? [];
+                                    $charge_formation_demands_for_resp_qualite_formation_ids_for_resp_hr = self::getDataByType('charge_formation_demands_for_resp_qualite_formation_ids' . $input['principal_user']->id, '', false, array(self::getEtatDemande('validated by responsable qualite formation')), self::getChargeFormationIds('')) ?? [];
+                                    $charge_qualite_process_demands_for_responsable_qualite_formation_ids_for_resp_hr = self::getDataByType('charge_qualite_process_demands_for_resp_qualite_formation_ids' . $input['principal_user']->id, "", false, array(self::getEtatDemande('validated by responsable qualite formation')), self::getChargeQualiteProcessIds('')) ?? [];
+                                    $coordinator_qualite_formation_demands_validated_by_director_for_resp_hr = self::getDataByType('coordinator_qualite_formation_demands_validated_by_director_for_resp_hr' . $input['principal_user']->id, "", false, array(self::getEtatDemande('validated by director')), self::getCoordinatorQualiteFormationIds('')) ?? [];
+                                    $responsable_formation_demands_validated_by_resp_qualite_formation_for_resp_hr = self::getDataByType("responsable_formation_demands_validated_by_resp_qualite_formation_for_resp_hr" . $input['principal_user']->id, "", false, array(self::getEtatDemande('validated by responsable qualite formation')), self::getResponsableFormationIds('')) ?? [];
+                                    $data_protection_officer_demands_validated_by_director_for_resp_hr = self::getDataByType('data_protection_officer_demands_validated_by_director_for_resp_hr'.$input['principal_user']->id, "", false, array(self::getEtatDemande('validated by director')), self::getDataProtectionOfficerIds(''));
+                                    $demand_ids_for_resp_hr = [];
+                                    $demand_ids_for_resp_hr[] = $opsmanager_created_demands_for_resp_hr;
+                                    $demand_ids_for_resp_hr[] = $wfm_agents_demands_for_resp_hr;
+                                    $demand_ids_for_resp_hr[] = $charge_rh_demands_for_resp_hr;
+                                    $demand_ids_for_resp_hr[] = $developer_created_demands_for_resp_hr;
+                                    $demand_ids_for_resp_hr[] = $agent_mg_created_demands_for_resp_hr;
+                                    $demand_ids_for_resp_hr[] = $resp_mg_created_demands_for_resp_hr;
+                                    $demand_ids_for_resp_hr[] = $resp_mg_validated_by_director_demands_for_resp_hr;
+                                    $demand_ids_for_resp_hr[] = $infirmiere_travail_created_demands_for_resp_hr;
+                                    $demand_ids_for_resp_hr[] = $charge_mission_aupres_direction_validated_by_director_for_resp_hr;
+                                    $demand_ids_for_resp_hr[] = $charge_formation_demands_for_resp_qualite_formation_ids_for_resp_hr;
+                                    $demand_ids_for_resp_hr[] = $charge_formation_demands_for_coordinator_qualite_formation_ids_for_resp_hr;
+                                    $demand_ids_for_resp_hr[] = $charge_qualite_process_demands_for_responsable_qualite_formation_ids_for_resp_hr;
+                                    $demand_ids_for_resp_hr[] = $coordinator_qualite_formation_demands_validated_by_director_for_resp_hr;
+                                    $demand_ids_for_resp_hr[] = $responsable_formation_demands_validated_by_resp_qualite_formation_for_resp_hr;
+                                    $demand_ids_for_resp_hr[] = $data_protection_officer_demands_validated_by_director_for_resp_hr;
+                                    $demand_ids_for_resp_hr = array_merge(...$demand_ids_for_resp_hr);
+                                    $query->orWhereIn('id', $demand_ids_for_resp_hr)->orWhereIn('id', $proprietary_demands);
                                 }
                             } else if (self::isChargeRH($value->id) and is_null($input['matricule'])) {
-                                $wfm_agents_demands = DemandeConge::whereIn('etat_demande_id', EtatDemandeConge::whereIn('etat_demande', ['validated by coordinateur cps', 'validated by coordinateur vigie'])->pluck('id')->toArray())->whereIn('user_id', self::getWFMAgentsIds())->pluck('id')->toArray();
-                                $it_agents_demands_ids = DemandeConge::where('etat_demande_id', self::getEtatDemande('validated by resp it'))->whereIn('user_id', self::getITAgentIds(''))->pluck('id')->toArray();
-                                $charge_comm_mktg_validated_by_director_demands = DemandeConge::where('etat_demande_id', self::getEtatDemande('validated by director'))->whereIn('user_id', self::getChargeCommMktgIds(''))->pluck('id')->toArray();
+                                $wfm_agents_demands_for_resp_hr = self::getDataByType('wfm_agents_demands_charge_hr' . $input['principal_user']->id, '', false, array(self::getEtatDemande('validated by coordinateur cps'), self::getEtatDemande('validated by coordinateur vigie')), self::getWFMAgentsIds()) ?? [];
+                                $it_agents_demands_ids = self::getDataByType('it_agents_demands_ids_charge_hr' . $input['principal_user']->id, '', false, array(self::getEtatDemande('validated by resp it')), self::getITAgentIds('')) ?? [];
+                                $charge_comm_mktg_validated_by_director_demands = self::getDataByType('charge_comm_mktg_validated_by_director_demands_charge_hr' . $input['principal_user']->id, '', false, array(self::getEtatDemande('validated by director')), self::getChargeCommMktgIds('')) ?? [];
+                                $charge_formation_validated_by_coordinator_qualite_formation_demands_charge_hr = self::getDataByType('charge_formation_validated_by_coordinator_qualite_formation_demands_charge_hr' . $input['principal_user']->id, '', false, array(self::getEtatDemande('validated by coordinateur qualite formation')), self::getChargeFormationIds('')) ?? [];
+                                $charge_qualite_process_validated_by_coordinator_qualite_formation_demands_charge_hr = self::getDataByType('charge_qualite_process_validated_by_coordinator_qualite_formation_demands_charge_hr' . $input['principal_user']->id, '', false, array(self::getEtatDemande('validated by coordinateur qualite formation')), self::getChargeQualiteProcessIds('')) ?? [];
                                 $demand_ids = [];
                                 $demand_ids[] = $it_agents_demands_ids;
-                                $demand_ids[] = $wfm_agents_demands;
+                                $demand_ids[] = $wfm_agents_demands_for_resp_hr;
                                 $demand_ids[] = $charge_comm_mktg_validated_by_director_demands;
+                                $demand_ids[] = $charge_formation_validated_by_coordinator_qualite_formation_demands_charge_hr;
+                                $demand_ids[] = $charge_qualite_process_validated_by_coordinator_qualite_formation_demands_charge_hr;
                                 $demand_ids = array_merge(...$demand_ids);
                                 $query->orWhereIn('id', $demand_ids)->orWhereIn('id', $proprietary_demands);
                             }
                         } else if (self::isSupervisor($value->id) and is_null($input['matricule'])) {
                             $query->whereIn('etat_demande_id', EtatDemandeConge::pluck('id')->toArray());
                         } else if (self::isDirector($value->id) and is_null($input['matricule'])) {
-                            $resprh_created_demands = DemandeConge::whereIn('user_id', User::where('role_id', Role::where('name', 'responsable rh')->first()->id)->pluck('id')->toArray())->where('etat_demande_id', EtatDemandeConge::where('etat_demande', 'created')->first()->id)->pluck('id')->toArray();
+                            $resprh_created_demands = self::getDataByType('resprh_created_demands_director' . $input['principal_user']->id, '', false, array(self::getEtatDemande('created')), self::getResponsableHRIds('')) ?? [];
                             $role_ids = [];
                             $role_ids[] = Role::where('name', 'like', "%statis%")->pluck('id')->toArray();
                             $role_ids[] = self::getChargeRHIds('roles');
                             $role_ids = array_merge(...$role_ids);
                             $role_ids[] = Role::where('name', 'like', "vigie")->first()->id;
                             $role_ids[] = Role::where('name', 'like', "%incoh%")->first()->id;
-                            $agent_wfm_and_chargehr_demands = DemandeConge::whereIn('user_id', User::whereIn('role_id', $role_ids)->pluck('id')->toArray())->whereIn('etat_demande_id', EtatDemandeConge::whereIn('etat_demande', ['created', 'validated by resp hr'])->pluck('id')->toArray())->pluck('id')->toArray();
-                            $resp_it_created_demands = DemandeConge::whereIn('user_id', self::getResponsableITIds(""))->where('etat_demande_id', self::getEtatDemande('created'))->pluck('id')->toArray();
-                            $resp_mg_created_demands = DemandeConge::whereIn('user_id', self::getResponsableMGIds(''))->where('etat_demande_id', self::getEtatDemande('created'))->pluck('id')->toArray();
-                            $infirmiere_travail_created_demands = DemandeConge::where('etat_demande_id', self::getEtatDemande('created'))->whereIn('user_id', self::getInfirmiereTravailIds(''))->pluck('id')->toArray();
-                            $charge_mission_aupres_direction_created_demands = DemandeConge::where('etat_demande_id', self::getEtatDemande('created'))->whereIn('user_id', self::getChargeMissionAupresDirectionIds(""))->pluck('id')->toArray();
-                            $charge_comm_mktg_created_demands = DemandeConge::where('etat_demande_id', self::getEtatDemande('created'))->whereIn('user_id', self::getChargeCommMktgIds(''))->pluck('id')->toArray();
-                            $query->orWhereIn('id', $resprh_created_demands)->orWhereIn('id', $agent_wfm_and_chargehr_demands)->orWhereIn('id', $resp_it_created_demands)->orWhereIn('id', $resp_mg_created_demands)->orWhereIn('id', $infirmiere_travail_created_demands)->orWhereIn('id', $charge_mission_aupres_direction_created_demands)->orWhereIn('id', $charge_comm_mktg_created_demands);
+                            $created_demands_profiles_ids = [];
+                            $created_demands_profiles_ids[] = self::getWFMAgentsIds();
+                            $created_demands_profiles_ids[] = self::getChargeRHIds('');
+                            $created_demands_profiles_ids[] = self::getCoordinatorQualiteFormationIds('');
+                            $created_demands_profiles_ids[] = self::getDataProtectionOfficerIds('');
+                            $created_demands_profiles_ids = array_merge(...$created_demands_profiles_ids);
+                            $agent_wfm_and_chargehr_demands = self::getDataByType('agent_wfm_and_chargehr_demands_director' . $input['principal_user']->id, '', false, array(self::getEtatDemande('created'), self::getEtatDemande('validated by resp hr')), $created_demands_profiles_ids) ?? [];
+                            $resp_it_created_demands = self::getDataByType('resp_it_created_demands_director' . $input['principal_user']->id, '', false, array(self::getEtatDemande('created')), self::getResponsableITIds('')) ?? [];
+                            $resp_mg_created_demands_for_resp_hr = self::getDataByType('resp_mg_created_demands_director' . $input['principal_user']->id, '', false, array(self::getEtatDemande('created')), self::getResponsableMGIds('')) ?? [];
+                            $infirmiere_travail_created_demands_for_resp_hr = self::getDataByType('infirmiere_travail_created_demands_director' . $input['principal_user']->id, '', false, array(self::getEtatDemande('created')), self::getInfirmiereTravailIds('')) ?? [];
+                            $charge_mission_aupres_direction_created_demands = self::getDataByType('charge_mission_aupres_direction_created_demands_director' . $input['principal_user']->id, '', false, array(self::getEtatDemande('created')), self::getChargeMissionAupresDirectionIds('')) ?? [];
+                            $charge_comm_mktg_created_demands = self::getDataByType('charge_comm_mktg_created_demands_director' . $input['principal_user']->id, '', false, array(self::getEtatDemande('created')), self::getChargeCommMktgIds('')) ?? [];
+                            $charge_recrutement_demands_validated_by_resp_qualite_formation = self::getDataByType('charge_recrutement_demands_validated_by_resp_qualite_formation' . $input['principal_user']->id, '', false, array(self::getEtatDemande('validated by responsable qualite formation')), self::getChargeRecrutementIds('')) ?? [];
+                            $query->orWhereIn('id', $resprh_created_demands)->orWhereIn('id', $agent_wfm_and_chargehr_demands)->orWhereIn('id', $resp_it_created_demands)->orWhereIn('id', $resp_mg_created_demands_for_resp_hr)->orWhereIn('id', $infirmiere_travail_created_demands_for_resp_hr)->orWhereIn('id', $charge_mission_aupres_direction_created_demands)->orWhereIn('id', $charge_comm_mktg_created_demands)->orWhereIn('id', $charge_recrutement_demands_validated_by_resp_qualite_formation);
                         } else if (self::isITResponsable("")) {
-                            $it_agents_demands_ids = DemandeConge::whereIn('user_id', self::getITAgentIds(""))->where('etat_demande', self::getEtatDemande('created'))->pluck('id')->toArray();
+                            $it_agents_demands_ids = self::getDataByType('it_agents_demands_ids_it_resp' . $input['principal_user']->id, '', false, array(self::getEtatDemande('created')), self::getITAgentIds('')) ?? [];
                             $query->whereIn('id', $it_agents_demands_ids);
                         }
                         break;
@@ -405,7 +436,9 @@ class DemandeCongeController extends Controller
     {
         $demand = DemandeConge::where('id', $request['data']['id'])->first();
         $user = json_decode(Redis::get($request->headers->get('Uuid')));
-        if (self::isCoordinatorQualiteFormation($user->role_id)) {
+        if (self::isResponsableQualiteFormation($user->role_id)) {
+            $demand->etat_demande_id = self::getEtatDemande('rejected by responsable qualite formation');
+        } else if (self::isCoordinatorQualiteFormation($user->role_id)) {
             $demand->etat_demande_id = self::getEtatDemande('rejected by coordinateur qualite formation');
         } else if (self::isITResponsable($user->role_id)) {
             $demand->etat_demande_id = self::getEtatDemande("rejected by resp it");
@@ -520,8 +553,16 @@ class DemandeCongeController extends Controller
         $role_id = $user->role_id;
 
         list($agent_ids, $supervisor_ids) = self::getAgentIdsAndSupervisorIds($user->role_id, $user);
-        if (self::isCoordinatorQualiteFormation($role_id)) {
-            return (new Collection(self::getDataByType('charge_formation_demands_for_charge_formation' . $user->id, "", false, array(self::getEtatDemande('created')), self::getChargeFormationIds(''))))->count();
+        if (self::isResponsableQualiteFormation($role_id)) {
+            $charge_formation_demands_for_responsable_qualite_formation = (new Collection(self::getDataByType('charge_formation_demands_for_responsable_qualite_formation' . $user->id, "", false, array(self::getEtatDemande('created')), self::getChargeFormationIds(''))))->count();
+            $charge_qualite_process_demands_for_responsable_qualite_formation = (new Collection(self::getDataByType('charge_qualite_process_demands_for_responsable_qualite_formation' . $user->id, "", false, array(self::getEtatDemande('created')), self::getChargeQualiteProcessIds(''))))->count();
+            $charge_recrutement_demands_for_responsable_qualite_formation = (new Collection(self::getDataByType('charge_recrutement_demands_for_responsable_qualite_formation' . $user->id, "", false, array(self::getEtatDemande('created')), self::getChargeRecrutementIds(''))))->count();
+            $responsable_formation_created_demands_for_resp_qualite_formation = (new Collection(self::getDataByType('responsable_formation_created_demands_for_resp_qualite_formation' . $user->id, "", false, array(self::getEtatDemande('created')), self::getResponsableFormationIds(''))))->count();
+            return $charge_formation_demands_for_responsable_qualite_formation + $charge_qualite_process_demands_for_responsable_qualite_formation + $charge_recrutement_demands_for_responsable_qualite_formation + $responsable_formation_created_demands_for_resp_qualite_formation;
+        } else if (self::isCoordinatorQualiteFormation($role_id)) {
+            $charge_formation_demands_for_coordinator_qualite_formation = (new Collection(self::getDataByType('charge_formation_demands_for_coordinator_qualite_formation' . $user->id, "", false, array(self::getEtatDemande('created')), self::getChargeFormationIds(''))))->count();
+            $charge_qualite_process_demands_for_coordinator_qualite_formation = (new Collection(self::getDataByType('charge_qualite_process_demands_for_coordinator_qualite_formation' . $user->id, "", false, array(self::getEtatDemande('created')), self::getChargeQualiteProcessIds(''))))->count();
+            return $charge_formation_demands_for_coordinator_qualite_formation + $charge_qualite_process_demands_for_coordinator_qualite_formation;
         } else if (self::isITResponsable($role_id)) {
             return (new Collection(self::getDataByType('it_agent_created_demands_for_it_responsable' . $user->id, "", false, array(self::getEtatDemande('created')), self::getITAgentIds(''))))->count();
         } else if (self::isSupervisor($role_id)) {
@@ -565,6 +606,12 @@ class DemandeCongeController extends Controller
             $charge_mission_aupres_direction_validated_by_director = 0;
             $charge_comm_mktg_validated_by_director = 0;
             $charge_formation_demands_validated_by_coordinator_qualite_formation = 0;
+            $charge_formation_demands_validated_by_responsable_qualite_formation = 0;
+            $charge_qualite_process_demands_validated_by_coordinator_qualite_formation = 0;
+            $charge_recrutement_demands_validated_by_responsable_qualite_formation = 0;
+            $coordinator_qualite_formation_demands_validated_by_director = 0;
+            $responsable_formation_validated_by_resp_qualite_formation_demands = 0;
+            $data_protection_officer_validated_by_director_demands = 0;
             $agent_validated_by_ops_manager = (new Collection(self::getDataByType('agent_demands_validated_by_ops_manager_hr' . $user->id, "", false, array(self::getEtatDemande('validated by ops manager')), self::getAgentIds(''))))->count();
             if (self::isResponsableRH($role_id)) {
                 $user_ids = [];
@@ -584,14 +631,20 @@ class DemandeCongeController extends Controller
                 $supervisor_validated_by_coordinators_wfm_demands = (new Collection(self::getDataByType('supervisor_demands_validated_by_coordinators_wfm_demands_resphr' . $user->id, "", false, array(self::getEtatDemande('validated by coordinateur cps'), self::getEtatDemande('validated by coordinateur vigie')), self::getSupervisorIds(''))))->count();
                 $resp_it_validated_by_director = (new Collection(self::getDataByType('resp_it_demands_validated_by_director_resphr' . $user->id, "", false, array(self::getEtatDemande('validated by director')), self::getResponsableITIds(""))))->count();
                 $charge_mission_aupres_direction_validated_by_director = (new Collection(self::getDataByType('charge_mission_aupres_direction_demands_validated_by_director' . $user->id, "", false, array(self::getEtatDemande('validated by director')), self::getChargeMissionAupresDirectionIds(""))))->count();
-                $charge_formation_demands_validated_by_coordinator_qualite_formation = (new Collection(self::getDataByType('charge_formation_demands_validated_by_coordinator_qualite_formation' . $user->id, "", false, array(self::getEtatDemande('validated by coordinateur qualite formation')), self::getChargeFormationIds(''))))->count();
+                $charge_formation_demands_validated_by_responsable_qualite_formation = (new Collection(self::getDataByType('charge_formation_demands_validated_by_responsable_qualite_formation' . $user->id, "", false, array(self::getEtatDemande('validated by responsable qualite formation')), self::getChargeFormationIds(''))))->count();
+                $charge_recrutement_demands_validated_by_responsable_qualite_formation = (new Collection(self::getDataByType('charge_recrutement_demands_validated_by_responsable_qualite_formation' . $user->id, "", false, array(self::getEtatDemande("validated by responsable qualite formation")), self::getChargeRecrutementIds(''))))->count();
+                $coordinator_qualite_formation_demands_validated_by_director = (new Collection(self::getDataByType('coordinator_qualite_formation_demands_validated_by_director' . $user->id, "", false, array(self::getEtatDemande('validated by director')), self::getCoordinatorQualiteFormationIds(''))))->count();
+                $responsable_formation_validated_by_resp_qualite_formation_demands = (new Collection(self::getDataByType('responsable_formation_validated_by_resp_qualite_formation_demands' . $user->id, "", false, array(self::getEtatDemande('validated by responsable qualite formation')), self::getResponsableFormationIds(''))))->count();
+                $data_protection_officer_validated_by_director_demands = (new Collection(self::getDataByType('data_protection_officer_validated_by_director_demands' . $user->id, "", false, array(self::getEtatDemande('validated by director')), self::getDataProtectionOfficerIds(''))))->count();
             } else if (self::isChargeRH($role_id)) {
                 $agent_wfm_validated_by_coordinators_wfm = (new Collection(self::getDataByType('agent_wfm_demands_validated_by_coordinators_wfm_chargehr' . $user->id, "", false, array(self::getEtatDemande('created')), self::getWFMAgentsIds())))->count();
                 $supervisor_validated_by_agent_wfm_demands = (new Collection(self::getDataByType('supervisor_demands_validated_by_agent_wfm_demands_chargehr' . $user->id, "", false, array(self::getEtatDemande('validated by cps'), self::getEtatDemande('validated by vigie')), self::getSupervisorIds(''))))->count();
                 $it_agent_validated_by_resp_it = (new Collection(self::getDataByType("it_agent_demands_validated_by_resp_it_chargehr" . $user->id, "", false, array(self::getEtatDemande('validated by resp it')), self::getAgentIds(''))))->count();
                 $charge_comm_mktg_validated_by_director = (new Collection(self::getDataByType("charge_comm_mktg_demands_validated_by_director" . $user->id, "", false, array(self::getEtatDemande('validated by director')), self::getChargeCommMktgIds(''))))->count();
+                $charge_formation_demands_validated_by_coordinator_qualite_formation = (new Collection(self::getDataByType('charge_formation_demands_validated_by_coordinator_qualite_formation' . $user->id, "", false, array(self::getEtatDemande('validated by coordinateur qualite formation')), self::getChargeFormationIds(''))))->count();
+                $charge_qualite_process_demands_validated_by_coordinator_qualite_formation = (new Collection(self::getDataByType('charge_qualite_process_demands_validated_by_coordinator_qualite_formation' . $user->id, "", false, array(self::getEtatDemande('validated by coordinateur qualite formation')), self::getChargeQualiteProcessIds(""))))->count();
             }
-            return $created_demands_from_profiles_rel_to_resprh + $agent_wfm_validated_by_coordinators_wfm + $agent_wfm_validated_by_director + $wfm_coordinators_validated_by_director + $opsmanager_validated_by_director + $supervisor_validated_by_agent_wfm_demands + $supervisor_validated_by_coordinators_wfm_demands + $agent_validated_by_ops_manager + $it_agent_validated_by_resp_it + $resp_it_validated_by_director + $resp_mg_validated_by_director + $charge_mission_aupres_direction_validated_by_director + $charge_comm_mktg_validated_by_director + $charge_formation_demands_validated_by_coordinator_qualite_formation;
+            return $created_demands_from_profiles_rel_to_resprh + $agent_wfm_validated_by_coordinators_wfm + $agent_wfm_validated_by_director + $wfm_coordinators_validated_by_director + $opsmanager_validated_by_director + $supervisor_validated_by_agent_wfm_demands + $supervisor_validated_by_coordinators_wfm_demands + $agent_validated_by_ops_manager + $it_agent_validated_by_resp_it + $resp_it_validated_by_director + $resp_mg_validated_by_director + $charge_mission_aupres_direction_validated_by_director + $charge_comm_mktg_validated_by_director + $charge_formation_demands_validated_by_coordinator_qualite_formation + $charge_formation_demands_validated_by_responsable_qualite_formation + $charge_qualite_process_demands_validated_by_coordinator_qualite_formation + $charge_recrutement_demands_validated_by_responsable_qualite_formation + $coordinator_qualite_formation_demands_validated_by_director + $responsable_formation_validated_by_resp_qualite_formation_demands + $data_protection_officer_validated_by_director_demands;
         } else if (self::isDirector($role_id)) {
             $supervisor_created_demands_ids_count = (new Collection(self::getDataByType('supervisor_created_demands_ids_for_director' . $user->id, "", false, array(self::getEtatDemande('created')), self::getSupervisorIds(''))))->count();
             $user_ids[] = self::getOpsManagersIds('');
@@ -606,6 +659,8 @@ class DemandeCongeController extends Controller
             $user_ids[] = self::getInfirmiereTravailIds("");
             $user_ids[] = self::getChargeMissionAupresDirectionIds("");
             $user_ids[] = self::getChargeCommMktgIds("");
+            $user_ids[] = self::getCoordinatorQualiteFormationIds("");
+            $user_ids[] = self::getDataProtectionOfficerIds("");
             $user_ids = array_merge(...$user_ids);
             $created_demands_from_profiles = (new Collection(self::getDataByType('all_demands_for_profiles_rel_to_director' . $user->id, "", false, array(self::getEtatDemande('created')), $user_ids)))->count();
             $resprh_created_demands = (new Collection(self::getDataByType('resprh_created_demands_for_director' . $user->id, "", false, array(self::getEtatDemande('created')), self::getResponsableHRIds(""))))->count();
@@ -816,6 +871,15 @@ class DemandeCongeController extends Controller
             $user = $demand->user;
             $demand_stack_elem = DemandeCongeStack::where('demande_conge_id', $demand->id)->first();
             $nombre_jours_confirmed = doubleval($request['data']['nombre_jours_confirmed']);
+            if (is_null($demand_stack_elem)) {
+                $demand_stack_elem = DemandeCongeStack::factory()->create([
+                    "demande_conge_id" => $demand->id,
+                    "user_id" => $user->id,
+                    "solde_cp" => 0,
+                    "solde_rjf" => $demand->nombre_jours
+                ]);
+                $demand_stack_elem->save();
+            }
             self::resetTheSoldes($demand, $user);
             self::correctSoldes("conge paye", $nombre_jours_confirmed, $user->solde_rjf, $user, $demand_stack_elem);
             $demand->nombre_jours = doubleval($request['data']['nombre_jours_confirmed']);
@@ -921,6 +985,20 @@ class DemandeCongeController extends Controller
         return $demand;
     }
 
+    public static function acceptDemandResponsableQualiteFormation(Request $request)
+    {
+        $demand = DemandeConge::where('id', $request['data']['id'])->first();
+        $demand->etat_demande_id = self::getEtatDemande('validated by responsable qualite formation');
+        $demand->save();
+        return $demand;
+    }
+
+    public static function getDemandesCongeLogs(Request $request)
+    {
+        $user = json_decode(Redis::get($request->headers->get('Uuid')));
+        return DemandeCongeLogs::where('user_id', $user->id)->orderBy('created_at', 'desc')->paginate();
+    }
+
     protected static function filterNulls($val)
     {
         return !is_null($val);
@@ -934,12 +1012,14 @@ class DemandeCongeController extends Controller
     public static function resetTheSoldes($demand, $user)
     {
         $demande_conge_stack_element = DemandeCongeStack::where('demande_conge_id', $demand->id)->first();
-        $user->solde_cp = $user->solde_cp + $demande_conge_stack_element->solde_cp;
-        $user->solde_rjf = $user->solde_rjf + $demande_conge_stack_element->solde_rjf;
+        if (!is_null($demande_conge_stack_element)) {
+            $user->solde_cp = $user->solde_cp + $demande_conge_stack_element->solde_cp;
+            $user->solde_rjf = $user->solde_rjf + $demande_conge_stack_element->solde_rjf;
+            $demande_conge_stack_element->delete();
+            $demande_conge_stack_element->save();
+        }
         $demand->save();
         $user->save();
-        $demande_conge_stack_element->delete();
-        $demande_conge_stack_element->save();
         return $user;
     }
 
@@ -1127,7 +1207,7 @@ class DemandeCongeController extends Controller
         foreach ($managers as $manager) {
             $all_managers_names_with_operations .= $manager->first_name . " " . $manager->last_name . " (";
             foreach ($manager->operations as $operation) {
-                $all_managers_names_with_operations .= $operation->name ;
+                $all_managers_names_with_operations .= $operation->name;
             }
             $all_managers_names_with_operations .= " )\n";
         }
@@ -1141,5 +1221,42 @@ class DemandeCongeController extends Controller
         } else {
             return $etat_demande . " (en cours)";
         }
+    }
+
+    private static function isResponsableQualiteFormation($role_id)
+    {
+        return $role_id === Role::where('name', 'like', "responsable%")->where('name', 'like', "%qualit%")->where('name', 'like', "%formation%")->first()->id;
+    }
+
+    private static function getChargeQualiteProcessIds($roles)
+    {
+        if ($roles === "roles") {
+            return self::getDataByType('getChargeQualiteProcessIds', "", true);
+        }
+        return self::getDataByType('getChargeQualiteProcessIds', '');
+    }
+
+    private static function getChargeRecrutementIds($roles)
+    {
+        if ($roles === "roles") {
+            return self::getDataByType('getChargeRecrutementIds', "", true);
+        }
+        return self::getDataByType('getChargeRecrutementIds', '');
+    }
+
+    private static function getResponsableFormationIds($roles)
+    {
+        if ($roles === "roles") {
+            return self::getDataByType('getResponsableFormationIds', "", true);
+        }
+        return self::getDataByType('getResponsableFormationIds', '');
+    }
+
+    private static function getDataProtectionOfficerIds($roles)
+    {
+        if ($roles === "roles") {
+            return self::getDataByType('getDataProtectionOfficerIds', "", true);
+        }
+        return self::getDataByType('getDataProtectionOfficerIds', '');
     }
 }

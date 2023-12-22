@@ -16,7 +16,7 @@ class User extends Authenticatable
     protected $guarded = [];
 
 //    protected $with = ['team_type', 'role', 'operations', 'department', 'primaryLanguage', 'secondaryLanguage', 'identityTypes', 'sourcingType', 'nationality', 'familySituation', 'managers', 'operation', 'motif', 'comment'];
-protected $with = ['role', 'team_type', 'operation', 'department', 'primaryLanguage', 'secondaryLanguage', 'demandesEnCours'];
+protected $with = ['role', 'team_type', 'operation', 'operations', 'department', 'primaryLanguage', 'secondaryLanguage', 'demandesEnCours'];
 
     /**
      * The attributes that are mass assignable.
@@ -48,6 +48,11 @@ protected $with = ['role', 'team_type', 'operation', 'department', 'primaryLangu
         'email_verified_at' => 'datetime',
         'password' => 'hashed',
     ];
+
+    public function demandesCongesLogs()
+    {
+        return $this->hasMany(DemandeCongeLogs::class);
+    }
 
     public function demandesEnCours()
     {

@@ -4,8 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Models\Comment;
 use App\Models\DemandeConge;
+use App\Models\DemandeCongeLogs;
+use App\Models\DemandeCongeStack;
 use App\Models\IdentityType;
 use App\Models\Language;
+use App\Models\ModificationSoldeComment;
 use App\Models\Nationality;
 use App\Models\Operation;
 use App\Models\Role;
@@ -87,7 +90,8 @@ class UserController extends Controller
             'address' => $body['address'],
             'creator_id' => json_decode(Redis::get($request->headers->get('Uuid')))->id,
             'solde_cp' => 0,
-            'solde_rjf' => 0
+            'solde_rjf' => 0,
+            'active' => true
         ]);
         $user->save();
         $comment = Comment::factory()->create([
@@ -129,6 +133,21 @@ class UserController extends Controller
         $user->cnss_number = $body['cnss_number'];
         $user->address = $body['address'];
         $user->creator_id = json_decode(Redis::get($request->headers->get('Uuid')))->id;
+        $demande_conge_stack = DemandeCongeStack::factory()->create([
+            "solde_cp" => $user->solde_cp,
+            "solde_rjf" => $user->solde_rjf,
+            "modification_solde_comment_id" => self::getSoldeCommentId("%Modification par RH in editing%"),
+            "user_id" => $user->id
+        ]);
+        $demande_conge_stack->save();
+        $demande_conge_log = DemandeCongeLogs::factory()->create([
+            "modifier_id" => $user->creator_id,
+            "nouveau_solde_cp" => $body['solde_cp'],
+            "nouveau_solde_rjf" => $body['solde_rjf'],
+            "demande_conge_stack_id" => $demande_conge_stack->id,
+            "user_id" => $user->id
+        ]);
+        $demande_conge_log->save();
         $user->solde_cp = $body['solde_cp'];
         $user->solde_rjf = $body['solde_rjf'];
 
@@ -356,5 +375,10 @@ class UserController extends Controller
             self::updateUser($body, $request);
             return 'done';
         }
+    }
+
+    public static function getSoldeCommentId($solde_comment)
+    {
+        return ModificationSoldeComment::where('comment_on_solde', 'like', $solde_comment)->first()->id;
     }
 }

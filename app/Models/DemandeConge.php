@@ -11,6 +11,16 @@ class DemandeConge extends Model
     protected $guarded = [];
     protected $with = ['typeDemande'];
 
+    public function demandeCongeLogs()
+    {
+        return $this->hasMany(DemandeCongeLogs::class);
+    }
+
+    public function soldeComment()
+    {
+        return $this->belongsTo(ModificationSoldeComment::class, 'modification_solde_comment_id');
+    }
+
     public function user()
     {
         return $this->belongsTo(User::class);

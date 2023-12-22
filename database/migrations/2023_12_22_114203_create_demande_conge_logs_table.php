@@ -11,13 +11,14 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('demande_conge_stacks', function (Blueprint $table) {
+        Schema::create('demande_conge_logs', function (Blueprint $table) {
             $table->id();
-            $table->double('solde_cp')->index()->nullable();
-            $table->double('solde_rjf')->index()->nullable();
+            $table->double('nouveau_solde_cp')->index()->nullable();
+            $table->double('nouveau_solde_rjf')->index()->nullable();
+            $table->unsignedBigInteger('demande_conge_stack_id')->index()->nullable();
             $table->unsignedBigInteger('demande_conge_id')->index()->nullable();
-            $table->unsignedBigInteger('modification_solde_comment_id')->index()->nullable();
             $table->unsignedBigInteger('user_id')->index()->nullable();
+            $table->unsignedBigInteger('modifier_id')->index()->nullable();
             $table->timestamps();
         });
     }
@@ -27,6 +28,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('demande_conge_stacks');
+        Schema::dropIfExists('demande_conge_logs');
     }
 };

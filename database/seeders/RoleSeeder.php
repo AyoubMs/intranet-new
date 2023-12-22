@@ -49,7 +49,7 @@ class RoleSeeder extends Seeder
             'Stagiaire It Dévloppeur', 'RPA Developer',
             'Full Stack Javascript Developer', 'Chargée de recrutement',
             'Developpeur', 'Stagiaire Assistante de Direction',
-            'Responsable Qualité Formation et Recrutement',
+            'Responsable Qualité Formation et Recrutement', 'Responsable Formation',
             'Coordinatrice Qualité Formation', 'Expert métier FR', 'Expert métier NL', 'Agent FR', 'Agent NL'];
 
         foreach ($profiles as $profile) {

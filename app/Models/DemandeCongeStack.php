@@ -10,6 +10,17 @@ class DemandeCongeStack extends Model
     use HasFactory;
 
     protected $guarded = [];
+    protected $with = ['modificationCongeComment'];
+
+    public function modificationCongeComment()
+    {
+        return $this->belongsTo(ModificationSoldeComment::class, 'modification_solde_comment_id');
+    }
+
+    public function demandeCongeLogs()
+    {
+        return $this->hasMany(DemandeCongeLogs::class);
+    }
 
     public function user()
     {

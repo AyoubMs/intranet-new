@@ -83,6 +83,15 @@ class AcceptDemandJob implements ShouldQueue
             $user = $demand->user;
             $demand_stack_elem = DemandeCongeStack::where('demande_conge_id', $demand->id)->first();
             $nombre_jours_confirmed = doubleval($this->request['data']['nombre_jours_confirmed']);
+            if (is_null($demand_stack_elem)) {
+                $demand_stack_elem = DemandeCongeStack::factory()->create([
+                    "demande_conge_id" => $demand->id,
+                    "user_id" => $user->id,
+                    "solde_cp" => 0,
+                    "solde_rjf" => $demand->nombre_jours
+                ]);
+                $demand_stack_elem->save();
+            }
             DemandeCongeController::resetTheSoldes($demand, $user);
             DemandeCongeController::correctSoldes("conge paye", $nombre_jours_confirmed, $user->solde_rjf, $user, $demand_stack_elem, $this->request);
 

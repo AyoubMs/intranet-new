@@ -120,6 +120,14 @@ class LoadDataFromDB implements ShouldQueue
             $role_ids = Role::where('name', 'like', "coordinateur %")->where('name', 'like', "%qualite%")->where('name', 'like', "%formation")->pluck('id')->toArray();
         } else if ($this->type === 'getChargeFormationIds') {
             $role_ids = Role::where('name', 'like', 'charge%')->where('name', 'like', "%formation")->pluck('id')->toArray();
+        } else if ($this->type === 'getChargeQualiteProcessIds') {
+            $role_ids = Role::where('name', 'like', "charg%")->where('name', 'like', "%qualit%")->where('name', 'like', "%process%")->pluck('id')->toArray();
+        } else if ($this->type === 'getChargeRecrutementIds') {
+            $role_ids = Role::where('name', 'like', 'charg%')->where('name', 'like', "%recrutement%")->pluck('id')->toArray();
+        } else if ($this->type === 'getResponsableFormationIds') {
+            $role_ids = Role::where('name', 'like', "responsable%")->where('name', 'like', "%formation")->pluck('id')->toArray();
+        } else if ($this->type === 'getDataProtectionOfficerIds') {
+            $role_ids = Role::where('name', 'like', "data protection officer")->pluck('id')->toArray();
         }
 
         if ($this->isRoles) {

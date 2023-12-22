@@ -100,7 +100,8 @@ class DemandeCongeSeeder extends Seeder
                     'etat_demande_id' => self::getEtatDemandeID($data[23]),
                     'user_id' => self::getUserID($data[2]),
                     'type_conge_id' => self::getTypeConge($data),
-                    'nombre_jours' => $data[10]
+                    'nombre_jours' => $data[10],
+                    'date_validation_niveau_1' => ($data[24] ?? null) === "" ? null : ($data[24] ?? null)
                 ]);
 //                $demande_state = EtatDemandeConge::where('id', self::getEtatDemandeID($data[23]))->first();
 //                if (str_contains($demande_state->etat_demande, 'cancel') or str_contains($demande_state->etat_demande, 'close')) {
