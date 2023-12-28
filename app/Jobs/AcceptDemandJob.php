@@ -92,7 +92,8 @@ class AcceptDemandJob implements ShouldQueue
                 ]);
                 $demand_stack_elem->save();
             }
-            DemandeCongeController::resetTheSoldes($demand, $user);
+            $validator = json_decode(Redis::get($this->request->headers->get('Uuid')));
+            DemandeCongeController::resetTheSoldes($demand, $user, $validator);
             DemandeCongeController::correctSoldes("conge paye", $nombre_jours_confirmed, $user->solde_rjf, $user, $demand_stack_elem, $this->request);
 
         }

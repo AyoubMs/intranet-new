@@ -133,18 +133,13 @@ class UserController extends Controller
         $user->cnss_number = $body['cnss_number'];
         $user->address = $body['address'];
         $user->creator_id = json_decode(Redis::get($request->headers->get('Uuid')))->id;
-        $demande_conge_stack = DemandeCongeStack::factory()->create([
-            "solde_cp" => $user->solde_cp,
-            "solde_rjf" => $user->solde_rjf,
-            "modification_solde_comment_id" => self::getSoldeCommentId("%Modification par RH in editing%"),
-            "user_id" => $user->id
-        ]);
-        $demande_conge_stack->save();
         $demande_conge_log = DemandeCongeLogs::factory()->create([
             "modifier_id" => $user->creator_id,
             "nouveau_solde_cp" => $body['solde_cp'],
             "nouveau_solde_rjf" => $body['solde_rjf'],
-            "demande_conge_stack_id" => $demande_conge_stack->id,
+            "ancien_solde_cp" => $user->solde_cp,
+            "ancien_solde_rjf" => $user->solde_rjf,
+            "modification_solde_comment_id" => self::getSoldeCommentId("%Modification par RH in editing%"),
             "user_id" => $user->id
         ]);
         $demande_conge_log->save();

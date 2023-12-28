@@ -10,7 +10,12 @@ class DemandeCongeLogs extends Model
     use HasFactory;
 
     protected $guarded = [];
-    protected $with = ['modifier', 'demande', 'demandeCongeStack', 'user'];
+    protected $with = ['modifier', 'demande', 'demandeCongeStack', 'user', 'modificationCongeComment'];
+
+    public function modificationCongeComment()
+    {
+        return $this->belongsTo(ModificationSoldeComment::class, 'modification_solde_comment_id');
+    }
 
     public function modifier()
     {

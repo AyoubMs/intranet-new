@@ -8,6 +8,7 @@ use App\Models\DemandeConge;
 use App\Models\DemandeCongeLogs;
 use App\Models\DemandeCongeStack;
 use App\Models\EtatDemandeConge;
+use App\Models\ModificationSoldeComment;
 use App\Models\Role;
 use App\Models\TypeConge;
 use App\Models\User;
@@ -476,8 +477,9 @@ class DemandeCongeController extends Controller
             $demand->etat_demande_id = EtatDemandeConge::where('etat_demande', 'rejected by director')->first()->id;
         }
         // reset the soldes
+        $rejector = $user;
         $user = User::where('matricule', $demand->user->matricule)->first();
-        self::resetTheSoldes($demand, $user);
+        self::resetTheSoldes($demand, $user, $rejector);
         return "";
     }
 
@@ -488,7 +490,7 @@ class DemandeCongeController extends Controller
         $user = User::where('matricule', $user->matricule)->first();
         $demand->etat_demande_id = EtatDemandeConge::where('etat_demande', 'like', "can%")->first()->id;
         // reset the soldes
-        return self::resetTheSoldes($demand, $user);
+        return self::resetTheSoldes($demand, $user, $user);
     }
 
     public static function acceptDemand($request)
@@ -706,8 +708,7 @@ class DemandeCongeController extends Controller
             'demande_conge_id' => $demand->id,
             'user_id' => $user->id
         ]);
-
-        self::correctSoldes($type_conge, $period, $solde_rjf, $user, $demand_stack_elem);
+        self::correctSoldes($type_conge, $period, $solde_rjf, $user, $demand_stack_elem, $user);
         Redis::set($request->headers->get('Uuid'), json_encode($user));
 
         return $demand;
@@ -721,7 +722,7 @@ class DemandeCongeController extends Controller
 
     public static function exportDemandsFile($request)
     {
-        $headerCells = ['A1' => 'Matricule', 'B1' => 'Name', 'C1' => 'Operations', 'D1' => 'Managers', 'E1' => 'Nombre de jours', 'F1' => 'Date Demande', 'G1' => 'Date Retour', 'H1' => 'Periode', 'I1' => 'Etat Demande'];
+        $headerCells = ['A1' => 'Matricule', 'B1' => 'Name', 'C1' => 'Operations', 'D1' => 'Managers', 'E1' => 'Nombre de jours', 'F1' => 'Date Validation Niveau 1', 'G1' => 'Date Validation Niveau 2', 'H1' => 'Date Validation Niveau 3', 'I1' => 'Date Validation Niveau 4', 'J1' => 'Date Demande', 'K1' => 'Date Retour', 'L1' => 'Periode', 'M1' => 'Etat Demande'];
         $input = self::getDemandsData($request['data'], $request);
         $spreadsheet = new Spreadsheet();
         $sheet = $spreadsheet->getActiveSheet();
@@ -740,12 +741,20 @@ class DemandeCongeController extends Controller
                 } else if ($headerCell[0] === 'E') {
                     $sheet->setCellValue($headerCell[0] . $index, $demand->nombre_jours);
                 } else if ($headerCell[0] === 'F') {
-                    $sheet->setCellValue($headerCell[0] . $index, $demand->date_demande);
+                    $sheet->setCellValue($headerCell[0] . $index, $demand->date_validation_niveau_1);
                 } else if ($headerCell[0] === 'G') {
-                    $sheet->setCellValue($headerCell[0] . $index, $demand->date_retour);
+                    $sheet->setCellValue($headerCell[0] . $index, $demand->date_validation_niveau_2);
                 } else if ($headerCell[0] === 'H') {
-                    $sheet->setCellValue($headerCell[0] . $index, $demand->periode);
+                    $sheet->setCellValue($headerCell[0] . $index, $demand->date_validation_niveau_3);
                 } else if ($headerCell[0] === 'I') {
+                    $sheet->setCellValue($headerCell[0] . $index, $demand->date_validation_niveau_4);
+                } else if ($headerCell[0] === 'J') {
+                    $sheet->setCellValue($headerCell[0] . $index, $demand->date_demande);
+                } else if ($headerCell[0] === 'K') {
+                    $sheet->setCellValue($headerCell[0] . $index, $demand->date_retour);
+                } else if ($headerCell[0] === 'L') {
+                    $sheet->setCellValue($headerCell[0] . $index, $demand->periode);
+                } else if ($headerCell[0] === 'M') {
                     $sheet->setCellValue($headerCell[0] . $index, self::getStateEtatDemande($demand->demand->etat_demande));
                 }
                 $index++;
@@ -880,8 +889,9 @@ class DemandeCongeController extends Controller
                 ]);
                 $demand_stack_elem->save();
             }
-            self::resetTheSoldes($demand, $user);
-            self::correctSoldes("conge paye", $nombre_jours_confirmed, $user->solde_rjf, $user, $demand_stack_elem);
+            $validator = json_decode(Redis::get($request->headers->get('Uuid')));
+            self::resetTheSoldes($demand, $user, $validator);
+            self::correctSoldes("conge paye", $nombre_jours_confirmed, $user->solde_rjf, $user, $demand_stack_elem, $validator);
             $demand->nombre_jours = doubleval($request['data']['nombre_jours_confirmed']);
             $user->save();
         }
@@ -893,6 +903,7 @@ class DemandeCongeController extends Controller
     {
         $demand = DemandeConge::where('id', $request['data']['id'])->first();
         $demand->etat_demande_id = self::getEtatDemande("validated by ops%");
+        self::setDateValidation($request['data'], $demand);
         $demand->save();
         return $demand;
     }
@@ -901,6 +912,7 @@ class DemandeCongeController extends Controller
     {
         $demand = DemandeConge::where('id', $request['data']['id'])->first();
         $demand->etat_demande_id = self::getEtatDemande("validated by resp it");
+        self::setDateValidation($request['data'], $demand);
         $demand->save();
         return $demand;
     }
@@ -909,6 +921,7 @@ class DemandeCongeController extends Controller
     {
         $demand = DemandeConge::where('id', $request['data']['id'])->first();
         $demand->etat_demande_id = self::getEtatDemande("validated by sup%");
+        self::setDateValidation($request['data'], $demand);
         $demand->save();
         return $demand;
     }
@@ -917,6 +930,7 @@ class DemandeCongeController extends Controller
     {
         $demand = DemandeConge::where('id', $request['data']['id'])->first();
         $demand->etat_demande_id = self::getEtatDemande("validated by vigie");
+        self::setDateValidation($request['data'], $demand);
         $demand->save();
         return $demand;
     }
@@ -925,6 +939,7 @@ class DemandeCongeController extends Controller
     {
         $demand = DemandeConge::where('id', $request['data']['id'])->first();
         $demand->etat_demande_id = self::getEtatDemande("validated by cps");
+        self::setDateValidation($request['data'], $demand);
         $demand->save();
         return $demand;
     }
@@ -933,6 +948,7 @@ class DemandeCongeController extends Controller
     {
         $demand = DemandeConge::where('id', $request['data']['id'])->first();
         $demand->etat_demande_id = self::getEtatDemande("validated by cci");
+        self::setDateValidation($request['data'], $demand);
         $demand->save();
         return $demand;
     }
@@ -941,6 +957,7 @@ class DemandeCongeController extends Controller
     {
         $demand = DemandeConge::where('id', $request['data']['id'])->first();
         $demand->etat_demande_id = self::getEtatDemande('validated by coordinateur vigie');
+        self::setDateValidation($request['data'], $demand);
         $demand->save();
         return $demand;
     }
@@ -949,6 +966,7 @@ class DemandeCongeController extends Controller
     {
         $demand = DemandeConge::where('id', $request['data']['id'])->first();
         $demand->etat_demande_id = self::getEtatDemande('validated by coordinateur cps');
+        self::setDateValidation($request['data'], $demand);
         $demand->save();
         return $demand;
     }
@@ -957,6 +975,7 @@ class DemandeCongeController extends Controller
     {
         $demand = DemandeConge::where('id', $request['data']['id'])->first();
         $demand->etat_demande_id = self::getEtatDemande('validated by head of operational excellence');
+        self::setDateValidation($request['data'], $demand);
         $demand->save();
         return $demand;
     }
@@ -965,6 +984,7 @@ class DemandeCongeController extends Controller
     {
         $demand = DemandeConge::where('id', $request['data']['id'])->first();
         $demand->etat_demande_id = self::getEtatDemande('closed');
+        self::setDateValidation($request['data'], $demand);
         $demand->save();
         return $demand;
     }
@@ -973,6 +993,7 @@ class DemandeCongeController extends Controller
     {
         $demand = DemandeConge::where('id', $request['data']['id'])->first();
         $demand->etat_demande_id = self::getEtatDemande('validated by director');
+        self::setDateValidation($request['data'], $demand);
         $demand->save();
         return $demand;
     }
@@ -981,6 +1002,7 @@ class DemandeCongeController extends Controller
     {
         $demand = DemandeConge::where('id', $request['data']['id'])->first();
         $demand->etat_demande_id = self::getEtatDemande('validated by coordinateur qualite formation');
+        self::setDateValidation($request['data'], $demand);
         $demand->save();
         return $demand;
     }
@@ -989,6 +1011,7 @@ class DemandeCongeController extends Controller
     {
         $demand = DemandeConge::where('id', $request['data']['id'])->first();
         $demand->etat_demande_id = self::getEtatDemande('validated by responsable qualite formation');
+        self::setDateValidation($request['data'], $demand);
         $demand->save();
         return $demand;
     }
@@ -996,7 +1019,7 @@ class DemandeCongeController extends Controller
     public static function getDemandesCongeLogs(Request $request)
     {
         $user = json_decode(Redis::get($request->headers->get('Uuid')));
-        return DemandeCongeLogs::where('user_id', $user->id)->orderBy('created_at', 'desc')->paginate();
+        return DemandeCongeLogs::where('user_id', $user->id)->whereNotNull('modification_solde_comment_id')->orderBy('id', 'desc')->paginate();
     }
 
     protected static function filterNulls($val)
@@ -1009,10 +1032,20 @@ class DemandeCongeController extends Controller
      * @param $user
      * @return mixed
      */
-    public static function resetTheSoldes($demand, $user)
+    public static function resetTheSoldes($demand, $user, $principal_user)
     {
         $demande_conge_stack_element = DemandeCongeStack::where('demande_conge_id', $demand->id)->first();
         if (!is_null($demande_conge_stack_element)) {
+            $demande_conge_log_element = DemandeCongeLogs::factory()->create([
+                "modifier_id" => $principal_user->id,
+                "nouveau_solde_cp" => $user->solde_cp + $demande_conge_stack_element->solde_cp,
+                "nouveau_solde_rjf" => $user->solde_rjf + $demande_conge_stack_element->solde_rjf,
+                "ancien_solde_cp" => $user->solde_cp,
+                "ancien_solde_rjf" => $user->solde_rjf,
+                "modification_solde_comment_id" => UserController::getSoldeCommentId("%Consommation par demande de congé%"),
+                "user_id" => $user->id
+            ]);
+            $demande_conge_log_element->save();
             $user->solde_cp = $user->solde_cp + $demande_conge_stack_element->solde_cp;
             $user->solde_rjf = $user->solde_rjf + $demande_conge_stack_element->solde_rjf;
             $demande_conge_stack_element->delete();
@@ -1125,9 +1158,17 @@ class DemandeCongeController extends Controller
      * @param $request
      * @return void
      */
-    public static function correctSoldes($type_conge, float $period, $solde_rjf, $user, $demand_stack_elem): void
+    public static function correctSoldes($type_conge, float $period, $solde_rjf, $user, $demand_stack_elem, $validator): void
     {
         if ($type_conge === "conge paye") {
+            $demande_conge_log_element = DemandeCongeLogs::factory()->create([
+                "modifier_id" => $validator->id,
+                "ancien_solde_cp" => $user->solde_cp,
+                "ancien_solde_rjf" => $user->solde_rjf,
+                "modification_solde_comment_id" => UserController::getSoldeCommentId("%Consommation par demande de congé%"),
+                "user_id" => $user->id
+            ]);
+//            - $demand_stack_elem->solde_cp
             if ($period >= $solde_rjf) {
                 $period = $period - $solde_rjf;
                 $user->solde_rjf = 0;
@@ -1139,6 +1180,9 @@ class DemandeCongeController extends Controller
                 $demand_stack_elem->solde_cp = 0;
                 $demand_stack_elem->solde_rjf = $period;
             }
+            $demande_conge_log_element->nouveau_solde_cp = $user->solde_cp;
+            $demande_conge_log_element->nouveau_solde_rjf = $user->solde_rjf;
+            $demande_conge_log_element->save();
         } else {
             $demand_stack_elem->solde_cp = 0;
             $demand_stack_elem->solde_rjf = 0;
@@ -1258,5 +1302,25 @@ class DemandeCongeController extends Controller
             return self::getDataByType('getDataProtectionOfficerIds', "", true);
         }
         return self::getDataByType('getDataProtectionOfficerIds', '');
+    }
+
+    /**
+     * @param $data
+     * @param $demand
+     * @return void
+     */
+    protected static function setDateValidation($data, $demand): void
+    {
+        $date_validation_number = intval($data['date_validation_number']);
+        if ($date_validation_number === 1) {
+            $demand->date_validation_niveau_1 = $data['date_validation'];
+        } else if ($date_validation_number === 2) {
+            $demand->date_validation_niveau_2 = $data['date_validation'];
+        } else if ($date_validation_number === 3) {
+            $demand->date_validation_niveau_3 = $data['date_validation'];
+        } else if ($date_validation_number === 4) {
+            $demand->date_validation_niveau_4 = $data['date_validation'];
+        }
+        $demand->save();
     }
 }
