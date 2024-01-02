@@ -128,6 +128,8 @@ class LoadDataFromDB implements ShouldQueue
             $role_ids = Role::where('name', 'like', "responsable%")->where('name', 'like', "%formation")->pluck('id')->toArray();
         } else if ($this->type === 'getDataProtectionOfficerIds') {
             $role_ids = Role::where('name', 'like', "data protection officer")->pluck('id')->toArray();
+        } else if ($this->type === 'getDirectorIds') {
+            $role_ids = Role::where('name', 'like', 'directeur')->pluck('id')->toArray();
         }
 
         if ($this->isRoles) {

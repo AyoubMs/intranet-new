@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Http\Controllers\DemandeCongeController;
 use App\Models\DemandeConge;
 use App\Models\EtatDemandeConge;
 use App\Models\TypeConge;
@@ -11,6 +12,203 @@ use Illuminate\Database\Seeder;
 
 class DemandeCongeSeeder extends Seeder
 {
+    public static function getProchainValidateur($etat_demande_id, $role_id)
+    {
+        $is_created = $etat_demande_id === self::getEtatDemandeID("created");
+        $is_agent = DemandeCongeController::isAgent($role_id);
+        $is_validated_by_superviseur = $etat_demande_id === self::getEtatDemandeID("validated by supervisor");
+        $is_validated_by_agent_wfm = in_array($etat_demande_id, array(self::getEtatDemandeID("validated by vigie"), self::getEtatDemandeID("validated by wfm"), self::getEtatDemandeID('validated by cps')));
+        $is_validated_by_ops_manager = $etat_demande_id == self::getEtatDemandeID('validated by ops manager');
+        $is_supervisor = DemandeCongeController::isSupervisor($role_id);
+        $is_validated_by_directeur = $etat_demande_id === self::getEtatDemandeID('validated by director');
+        $is_validated_by_resp_wfm = in_array($etat_demande_id, array(self::getEtatDemandeID('validated by coordinateur vigie'), self::getEtatDemandeID('validated by coordinateur cps')));
+        $is_ops_manager = DemandeCongeController::isOpsManager($role_id);
+        $is_resp_rh = DemandeCongeController::isResponsableRH($role_id);
+        $is_resp_wfm = DemandeCongeController::isWFMCoordinator($role_id);
+        $is_it_support = DemandeCongeController::isITAgent($role_id);
+        $is_validated_by_resp_it = $etat_demande_id === self::getEtatDemandeID('validated by resp it');
+        $is_resp_it = DemandeCongeController::isITResponsable($role_id);
+        $is_agent_wfm = DemandeCongeController::isCPS($role_id) or DemandeCongeController::isVigie($role_id);
+        $is_agent_moyens_generaux = DemandeCongeController::isAgentMG($role_id);
+        $is_resp_moyens_generaux = DemandeCongeController::isRespMG($role_id);
+        $is_charge_formation = DemandeCongeController::isChargeFormation($role_id);
+        $is_validated_by_coordinateur_qualite_formation = $etat_demande_id === self::getEtatDemandeID('validated by coordinateur qualite formation');
+        $is_validated_by_responsable_qualite_formation = $etat_demande_id === self::getEtatDemandeID('validated by responsable qualite formation');
+        $is_coordinateur_qualite_formation = DemandeCongeController::isCoordinatorQualiteFormation($role_id);
+        $is_resp_qualite_formation = DemandeCongeController::isResponsableQualiteFormation($role_id);
+        $is_charge_rh = DemandeCongeController::isChargeRH($role_id);
+        $is_validated_by_resp_rh = $etat_demande_id === self::getEtatDemandeID('validated by resp rh');
+        $is_cps = DemandeCongeController::isCPS($role_id);
+        $is_infirmiere_de_travail = DemandeCongeController::isInfirmiereDeTravail($role_id);
+        $is_charge_mission_aupres_direction = DemandeCongeController::isChargeMissionAupresDirection($role_id);
+        $is_charge_qualite_process = DemandeCongeController::isChargeQualiteProcess($role_id);
+        $is_data_protection_officer = DemandeCongeController::isDataProtectionOfficer($role_id);
+        $is_charge_comm_marketing = DemandeCongeController::isChargeCommMarketing($role_id);
+        $is_charge_recrutement = DemandeCongeController::isChargeRecrutement($role_id);
+        if ($is_agent) {
+            // Agent funnel
+            if ($is_created) {
+                return array('superviseur', 'agent wfm');
+            } else if ($is_validated_by_superviseur) {
+                return 'agent wfm';
+            } else if ($is_validated_by_agent_wfm) {
+                return 'ops manager';
+            } else if ($is_validated_by_ops_manager) {
+                return array('charge rh', 'resp rh');
+            }
+        }
+        else if ($is_supervisor) {
+            // Supervisor funnel
+            if ($is_created) {
+                return array('ops manager', 'directeur');
+            } else if ($is_validated_by_ops_manager) {
+                return 'agent wfm';
+            } else if ($is_validated_by_agent_wfm) {
+                return 'charge rh';
+            } else if ($is_validated_by_directeur) {
+                return 'resp wfm';
+            } else if ($is_validated_by_resp_wfm) {
+                return 'resp rh';
+            }
+        }
+        else if ($is_ops_manager) {
+            if ($is_created) {
+                return array('directeur', 'resp rh');
+            } else if ($is_validated_by_directeur) {
+                return 'resp rh';
+            }
+        }
+        else if ($is_resp_rh) {
+            if ($is_created) {
+                return 'directeur';
+            }
+        }
+        else if ($is_resp_wfm) {
+            if ($is_created) {
+                return array('directeur', 'resp rh');
+            } else if ($is_validated_by_directeur) {
+                return 'resp rh';
+            }
+        }
+        else if ($is_it_support) {
+            if ($is_created) {
+                return 'resp it';
+            } else if ($is_validated_by_resp_it) {
+                return 'charge rh';
+            }
+        }
+        else if ($is_resp_it) {
+            if ($is_created) {
+                return array('directeur', 'resp rh');
+            } else if ($is_validated_by_directeur) {
+                return 'resp rh';
+            }
+        }
+        else if ($is_agent_wfm) {
+            if ($is_created) {
+                return array('resp wfm', 'directeur');
+            } else if ($is_validated_by_resp_wfm) {
+                return 'charge rh';
+            } else if ($is_validated_by_directeur) {
+                return 'resp rh';
+            }
+        }
+        else if ($is_agent_moyens_generaux) {
+            if ($is_created) {
+                return 'resp rh';
+            }
+        }
+        else if ($is_resp_moyens_generaux) {
+            if ($is_created) {
+                return array('directeur', 'resp rh');
+            } else if ($is_validated_by_directeur) {
+                return 'resp rh';
+            }
+        }
+        else if ($is_charge_formation) {
+            if ($is_created) {
+                return array('coordinateur qualite formation', 'responsable qualite formation');
+            } else if ($is_validated_by_coordinateur_qualite_formation) {
+                return 'charge rh';
+            } else if ($is_validated_by_responsable_qualite_formation) {
+                return 'resp rh';
+            }
+        }
+        else if ($is_coordinateur_qualite_formation) {
+            if ($is_created) {
+                return 'directeur';
+            } else if ($is_validated_by_directeur) {
+                return 'resp rh';
+            }
+        }
+        else if ($is_resp_qualite_formation) {
+            if ($is_created) {
+                return array('directeur', 'resp rh');
+            } else if ($is_validated_by_directeur) {
+                return 'resp rh';
+            }
+        }
+        else if ($is_charge_rh) {
+            if ($is_created) {
+                return array('resp rh', 'directeur');
+            } else if ($is_validated_by_resp_rh) {
+                return 'directeur';
+            }
+        }
+        else if ($is_cps) {
+            if ($is_created) {
+                return array('resp wfm', 'directeur');
+            } else if ($is_validated_by_resp_wfm) {
+                return 'charge rh';
+            } else if ($is_validated_by_directeur) {
+                return 'resp rh';
+            }
+        }
+        else if ($is_infirmiere_de_travail) {
+            if ($is_created) {
+                return array('resp rh', 'directeur');
+            }
+        }
+        else if ($is_charge_mission_aupres_direction) {
+            if ($is_created) {
+                return 'directeur';
+            } else if ($is_validated_by_directeur) {
+                return 'resp rh';
+            }
+        }
+        else if ($is_charge_qualite_process) {
+            if ($is_created) {
+                return array('coordinateur qualite formation', 'responsable qualite formation');
+            } else if ($is_validated_by_coordinateur_qualite_formation) {
+                return 'charge rh';
+            } else if ($is_validated_by_responsable_qualite_formation) {
+                return 'resp rh';
+            }
+        }
+        else if ($is_data_protection_officer) {
+            if ($is_created) {
+                return 'directeur';
+            } else if ($is_validated_by_resp_rh) {
+                return 'resp rh';
+            }
+        }
+        else if ($is_charge_comm_marketing) {
+            if ($is_created) {
+                return 'directeur';
+            } else if ($is_validated_by_directeur) {
+                return 'charge rh';
+            }
+        }
+        else if ($is_charge_recrutement) {
+            if ($is_created) {
+                return 'responsable qualite formation';
+            } else if ($is_validated_by_responsable_qualite_formation) {
+                return 'resp rh';
+            }
+        }
+        return '';
+    }
+
     protected static function getTypeConge($data)
     {
         if ($data[13] or $data[14] or $data[15] or $data[16]) {
@@ -91,7 +289,7 @@ class DemandeCongeSeeder extends Seeder
             $datesFin = [$data[14] ?? null, $data[16] ?? null, $data[19] ?? null, $data[21] ?? null];
             $data[8] = $data[8] ?? null;
             if ($data[8] and $data[9] and $data[23] and $data[2]) {
-                DemandeConge::factory()->create([
+                $demand = DemandeConge::factory()->create([
                     'date_demande' => $data[8],
                     'date_retour' => $data[9],
                     'periode' => self::getPeriod(self::getDate($datesDebut), self::getDate($datesFin)),
@@ -101,8 +299,13 @@ class DemandeCongeSeeder extends Seeder
                     'user_id' => self::getUserID($data[2]),
                     'type_conge_id' => self::getTypeConge($data),
                     'nombre_jours' => $data[10],
-                    'date_validation_niveau_1' => ($data[24] ?? null) === "" ? null : ($data[24] ?? null)
+                    'date_validation_niveau_1' => ($data[24] ?? null) === "" ? null : ($data[24] ?? null),
                 ]);
+                $user = User::where('id', $demand->user_id)->first();
+                if ($user) {
+                    $demand->prochain_validateur = self::getProchainValidateur($demand->etat_demande_id, $user->role_id);
+                }
+                $demand->save();
 //                $demande_state = EtatDemandeConge::where('id', self::getEtatDemandeID($data[23]))->first();
 //                if (str_contains($demande_state->etat_demande, 'cancel') or str_contains($demande_state->etat_demande, 'close')) {
 //

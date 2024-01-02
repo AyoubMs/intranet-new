@@ -14,6 +14,7 @@ use App\Models\TypeConge;
 use App\Models\User;
 
 //use Illuminate\Database\Query\Builder;
+use Database\Seeders\DemandeCongeSeeder;
 use Dflydev\DotAccessData\Data;
 use Exception;
 use Illuminate\Http\Request;
@@ -23,18 +24,19 @@ use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Reader\Xls;
 use PhpOffice\PhpSpreadsheet\Reader\Xlsx;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use stdClass;
 use Vtiful\Kernel\Excel;
 use Illuminate\Database\Eloquent\Collection;
 
 class DemandeCongeController extends Controller
 {
 
-    protected static function bundleConditionsAndQueries($input, $request)
+    public static function bundleConditionsAndQueries($input, $request)
     {
         return self::getDemands($input, $request);
     }
 
-    protected static function getDataByType($type, $query, $isRoles = false, $etat_demande_ids = [], $user_ids = [])
+    public static function getDataByType($type, $query, $isRoles = false, $etat_demande_ids = [], $user_ids = [])
     {
         dispatch(new LoadDataFromDB($query, $type, $isRoles, $etat_demande_ids, $user_ids, str_contains($type, 'demands')));
         if ($isRoles) {
@@ -43,7 +45,7 @@ class DemandeCongeController extends Controller
         return json_decode(Redis::get($type));
     }
 
-    protected static function getProfileCondition($role_id)
+    public static function getProfileCondition($role_id)
     {
         if (self::isSupervisor($role_id)) {
             return true;
@@ -77,7 +79,7 @@ class DemandeCongeController extends Controller
     /**
      * @return array
      */
-    protected static function WFMIds(): array
+    public static function WFMIds(): array
     {
         $wfm_ids = [];
         $wfm_ids[] = Role::where('name', 'like', "%statis%")->pluck('id')->toArray();
@@ -135,12 +137,67 @@ class DemandeCongeController extends Controller
         return in_array($role_id, Role::where('name', 'like', "%coordina%")->pluck('id')->toArray());
     }
 
+    public static function isWFMCoordinator($role_id)
+    {
+        return in_array($role_id, Role::where('name', 'like', "%coordina%")->whereNot('name', 'like', 'qualit')->pluck('id')->toArray());
+    }
+
+    public static function isInfirmiereDeTravail($role_id)
+    {
+        return in_array($role_id, Role::where('name', 'like', "infirm%")->pluck('id')->toArray());
+    }
+
+    public static function isChargeMissionAupresDirection($role_id)
+    {
+        return in_array($role_id, Role::where('name', 'like', "charge%")->where('name', 'like', "%direction")->pluck('id')->toArray());
+    }
+
+    public static function isChargeQualiteProcess($role_id)
+    {
+        return in_array($role_id, Role::where('name', 'like', "charg%")->where('name', 'like', "%qualit%")->where('name', 'like', "%process%")->pluck('id')->toArray());
+    }
+
+    public static function isDataProtectionOfficer($role_id)
+    {
+        return in_array($role_id, Role::where('name', 'like', "data protection officer")->pluck('id')->toArray());
+    }
+
+    public static function isITAgent($role_id)
+    {
+        return in_array($role_id, Role::where('name', 'like', "informaticien")->orWhere('name', 'like', "it support")->orWhere('name', 'like', 'stagiaire it')->pluck('id')->toArray());
+    }
+
+    public static function isAgentMG($role_id)
+    {
+        return in_array($role_id, Role::where('name', 'like', 'agent %')->where('name', 'like', '%moyens%')->pluck('id')->toArray());
+    }
+
+    public static function isRespMG($role_id)
+    {
+        return in_array($role_id, Role::where('name', 'like', 'responsable %')->where('name', 'like', "%moyens%")->pluck('id')->toArray());
+    }
+
+    public static function isChargeFormation($role_id)
+    {
+        return in_array($role_id, Role::where('name', 'like', "charg%")->where('name', 'like', "%formation%")->pluck('id')->toArray());
+    }
+
+    public static function isChargeCommMarketing($role_id)
+    {
+        return in_array($role_id, Role::where('name', 'like', 'charge%')->where('name', 'like', "%marketing%")->pluck('id')->toArray());
+    }
+
+    public static function isChargeRecrutement($role_id)
+    {
+        return in_array($role_id, Role::where('name', 'like', 'charg%')->where('name', 'like', "%recrutement%")->pluck('id')->toArray());
+    }
+
     public static function isHeadOfOperationalExcellence($role_id)
     {
         return $role_id === Role::where('name', 'head of operational excellence')->first()->id;
     }
 
-    protected static function getOpsManagersIds($type)
+    public static function getOpsManagersIds($type)
     {
         if ($type === 'roles') {
             return self::getDataByType('getOpsManagersIds', "", true);
@@ -148,7 +205,7 @@ class DemandeCongeController extends Controller
         return self::getDataByType('getOpsManagersIds', "");
     }
 
-    protected static function getWFMCoordinatorIds($type)
+    public static function getWFMCoordinatorIds($type)
     {
         if ($type === 'roles') {
             return self::getDataByType('getWFMCoordinatorIds', "", true);
@@ -156,7 +213,7 @@ class DemandeCongeController extends Controller
         return self::getDataByType('getWFMCoordinatorIds', "");
     }
 
-    protected static function getHeadOfOperationalExcellenceIds($type)
+    public static function getHeadOfOperationalExcellenceIds($type)
     {
         if ($type === 'roles') {
             return self::getDataByType('getHeadOfOperationalExcellenceIds', "", true);
@@ -164,32 +221,32 @@ class DemandeCongeController extends Controller
         return self::getDataByType('getHeadOfOperationalExcellenceIds', "");
     }
 
-    protected static function getVigieCoordinatorIds()
+    public static function getVigieCoordinatorIds()
     {
         return self::getDataByType('getVigieCoordinatorIds', "");
     }
 
-    protected static function getVigieIds()
+    public static function getVigieIds()
     {
         return self::getDataByType('getVigieIds', "");
     }
 
-    protected static function getCPSIds()
+    public static function getCPSIds()
     {
         return self::getDataByType('getCPSIds', "");
     }
 
-    protected static function getCPSCoordinatorIds()
+    public static function getCPSCoordinatorIds()
     {
         return self::getDataByType('getCPSCoordinatorIds', "");
     }
 
-    protected static function getWFMAgentsIds()
+    public static function getWFMAgentsIds()
     {
         return self::getDataByType('getWFMAgentsIds', "");
     }
 
-    protected static function getChargeRHIds($type)
+    public static function getChargeRHIds($type)
     {
         if ($type === 'roles') {
             return self::getDataByType('getChargeRHIds', "", true);
@@ -201,7 +258,7 @@ class DemandeCongeController extends Controller
      * @param array $input
      * @return mixed
      */
-    protected static function getDemands(array $input, $request, $export = false)
+    public static function getDemands(array $input, $request, $export = false)
     {
         $query = DemandeConge::when($input, function ($query, $input) {
             foreach ($input as $key => $value) {
@@ -359,7 +416,7 @@ class DemandeCongeController extends Controller
                                     $charge_qualite_process_demands_for_responsable_qualite_formation_ids_for_resp_hr = self::getDataByType('charge_qualite_process_demands_for_resp_qualite_formation_ids' . $input['principal_user']->id, "", false, array(self::getEtatDemande('validated by responsable qualite formation')), self::getChargeQualiteProcessIds('')) ?? [];
                                     $coordinator_qualite_formation_demands_validated_by_director_for_resp_hr = self::getDataByType('coordinator_qualite_formation_demands_validated_by_director_for_resp_hr' . $input['principal_user']->id, "", false, array(self::getEtatDemande('validated by director')), self::getCoordinatorQualiteFormationIds('')) ?? [];
                                     $responsable_formation_demands_validated_by_resp_qualite_formation_for_resp_hr = self::getDataByType("responsable_formation_demands_validated_by_resp_qualite_formation_for_resp_hr" . $input['principal_user']->id, "", false, array(self::getEtatDemande('validated by responsable qualite formation')), self::getResponsableFormationIds('')) ?? [];
-                                    $data_protection_officer_demands_validated_by_director_for_resp_hr = self::getDataByType('data_protection_officer_demands_validated_by_director_for_resp_hr'.$input['principal_user']->id, "", false, array(self::getEtatDemande('validated by director')), self::getDataProtectionOfficerIds(''));
+                                    $data_protection_officer_demands_validated_by_director_for_resp_hr = self::getDataByType('data_protection_officer_demands_validated_by_director_for_resp_hr' . $input['principal_user']->id, "", false, array(self::getEtatDemande('validated by director')), self::getDataProtectionOfficerIds(''));
                                     $demand_ids_for_resp_hr = [];
                                     $demand_ids_for_resp_hr[] = $opsmanager_created_demands_for_resp_hr;
                                     $demand_ids_for_resp_hr[] = $wfm_agents_demands_for_resp_hr;
@@ -478,7 +535,7 @@ class DemandeCongeController extends Controller
         }
         // reset the soldes
         $rejector = $user;
-        $user = User::where('matricule', $demand->user->matricule)->first();
+        $user = User::where('id', $demand->user_id)->first();
         self::resetTheSoldes($demand, $user, $rejector);
         return "";
     }
@@ -722,7 +779,7 @@ class DemandeCongeController extends Controller
 
     public static function exportDemandsFile($request)
     {
-        $headerCells = ['A1' => 'Matricule', 'B1' => 'Name', 'C1' => 'Operations', 'D1' => 'Managers', 'E1' => 'Nombre de jours', 'F1' => 'Date Validation Niveau 1', 'G1' => 'Date Validation Niveau 2', 'H1' => 'Date Validation Niveau 3', 'I1' => 'Date Validation Niveau 4', 'J1' => 'Date Demande', 'K1' => 'Date Retour', 'L1' => 'Periode', 'M1' => 'Etat Demande'];
+        $headerCells = ['A1' => 'Matricule', 'B1' => 'Name', 'C1' => 'Operations', 'D1' => 'Managers', 'E1' => 'Nombre de jours', 'F1' => 'Date Validation Niveau 1', 'G1' => 'Date Validation Niveau 2', 'H1' => 'Date Validation Niveau 3', 'I1' => 'Date Validation Niveau 4', 'J1' => 'prochains validateurs', 'K1' => 'Date Demande', 'L1' => 'Date Retour', 'M1' => 'Periode', 'N1' => 'Etat Demande'];
         $input = self::getDemandsData($request['data'], $request);
         $spreadsheet = new Spreadsheet();
         $sheet = $spreadsheet->getActiveSheet();
@@ -730,6 +787,7 @@ class DemandeCongeController extends Controller
             $index = 2;
             $sheet->setCellValue($headerCell, $title);
             foreach (self::getDemands($input, $request, true) as $demand) {
+                $prochain_validateur = self::getProchainsValidateursNames(DemandeCongeSeeder::getProchainValidateur($demand->etat_demande_id, $demand->user->role_id), $demand->user);
                 if ($headerCell[0] === 'A') {
                     $sheet->setCellValue($headerCell[0] . $index, $demand->user->matricule);
                 } else if ($headerCell[0] === 'B') {
@@ -749,12 +807,15 @@ class DemandeCongeController extends Controller
                 } else if ($headerCell[0] === 'I') {
                     $sheet->setCellValue($headerCell[0] . $index, $demand->date_validation_niveau_4);
                 } else if ($headerCell[0] === 'J') {
-                    $sheet->setCellValue($headerCell[0] . $index, $demand->date_demande);
+                    $sheet->setCellValue($headerCell[0] . $index, $prochain_validateur);
+                    $sheet->getStyle($headerCell[0] . $index)->getAlignment()->setWrapText(true);
                 } else if ($headerCell[0] === 'K') {
-                    $sheet->setCellValue($headerCell[0] . $index, $demand->date_retour);
+                    $sheet->setCellValue($headerCell[0] . $index, $demand->date_demande);
                 } else if ($headerCell[0] === 'L') {
-                    $sheet->setCellValue($headerCell[0] . $index, $demand->periode);
+                    $sheet->setCellValue($headerCell[0] . $index, $demand->date_retour);
                 } else if ($headerCell[0] === 'M') {
+                    $sheet->setCellValue($headerCell[0] . $index, $demand->periode);
+                } else if ($headerCell[0] === 'N') {
                     $sheet->setCellValue($headerCell[0] . $index, self::getStateEtatDemande($demand->demand->etat_demande));
                 }
                 $index++;
@@ -809,7 +870,7 @@ class DemandeCongeController extends Controller
      * @param $matricule
      * @return array
      */
-    protected static function getUserIdsAndUserId($principal_user, $matricule): array
+    public static function getUserIdsAndUserId($principal_user, $matricule): array
     {
         $user_id = null;
         $user_ids = [];
@@ -828,7 +889,7 @@ class DemandeCongeController extends Controller
     /**
      * @return array
      */
-    protected static function getHRIds(): array
+    public static function getHRIds(): array
     {
         $hr_ids = [];
         $hr_ids[] = Role::where('name', 'like', "%rh%")->pluck('id')->toArray();
@@ -877,7 +938,7 @@ class DemandeCongeController extends Controller
         $demand->type_conge_id = $request['data']['type_conge_id'];
         $conge_paye_id = TypeConge::where('name', 'conge paye')->first()->id;
         if ($demand->type_conge_id === $conge_paye_id) {
-            $user = $demand->user;
+            $user = User::where('id', $demand->user_id)->first();
             $demand_stack_elem = DemandeCongeStack::where('demande_conge_id', $demand->id)->first();
             $nombre_jours_confirmed = doubleval($request['data']['nombre_jours_confirmed']);
             if (is_null($demand_stack_elem)) {
@@ -904,6 +965,7 @@ class DemandeCongeController extends Controller
         $demand = DemandeConge::where('id', $request['data']['id'])->first();
         $demand->etat_demande_id = self::getEtatDemande("validated by ops%");
         self::setDateValidation($request['data'], $demand);
+        $demand->prochain_validateur = $request['data']['prochain_validateur'];
         $demand->save();
         return $demand;
     }
@@ -913,6 +975,7 @@ class DemandeCongeController extends Controller
         $demand = DemandeConge::where('id', $request['data']['id'])->first();
         $demand->etat_demande_id = self::getEtatDemande("validated by resp it");
         self::setDateValidation($request['data'], $demand);
+        $demand->prochain_validateur = $request['data']['prochain_validateur'];
         $demand->save();
         return $demand;
     }
@@ -922,6 +985,7 @@ class DemandeCongeController extends Controller
         $demand = DemandeConge::where('id', $request['data']['id'])->first();
         $demand->etat_demande_id = self::getEtatDemande("validated by sup%");
         self::setDateValidation($request['data'], $demand);
+        $demand->prochain_validateur = $request['data']['prochain_validateur'];
         $demand->save();
         return $demand;
     }
@@ -931,6 +995,7 @@ class DemandeCongeController extends Controller
         $demand = DemandeConge::where('id', $request['data']['id'])->first();
         $demand->etat_demande_id = self::getEtatDemande("validated by vigie");
         self::setDateValidation($request['data'], $demand);
+        $demand->prochain_validateur = $request['data']['prochain_validateur'];
         $demand->save();
         return $demand;
     }
@@ -940,6 +1005,7 @@ class DemandeCongeController extends Controller
         $demand = DemandeConge::where('id', $request['data']['id'])->first();
         $demand->etat_demande_id = self::getEtatDemande("validated by cps");
         self::setDateValidation($request['data'], $demand);
+        $demand->prochain_validateur = $request['data']['prochain_validateur'];
         $demand->save();
         return $demand;
     }
@@ -949,6 +1015,7 @@ class DemandeCongeController extends Controller
         $demand = DemandeConge::where('id', $request['data']['id'])->first();
         $demand->etat_demande_id = self::getEtatDemande("validated by cci");
         self::setDateValidation($request['data'], $demand);
+        $demand->prochain_validateur = $request['data']['prochain_validateur'];
         $demand->save();
         return $demand;
     }
@@ -958,6 +1025,7 @@ class DemandeCongeController extends Controller
         $demand = DemandeConge::where('id', $request['data']['id'])->first();
         $demand->etat_demande_id = self::getEtatDemande('validated by coordinateur vigie');
         self::setDateValidation($request['data'], $demand);
+        $demand->prochain_validateur = $request['data']['prochain_validateur'];
         $demand->save();
         return $demand;
     }
@@ -967,6 +1035,7 @@ class DemandeCongeController extends Controller
         $demand = DemandeConge::where('id', $request['data']['id'])->first();
         $demand->etat_demande_id = self::getEtatDemande('validated by coordinateur cps');
         self::setDateValidation($request['data'], $demand);
+        $demand->prochain_validateur = $request['data']['prochain_validateur'];
         $demand->save();
         return $demand;
     }
@@ -976,6 +1045,7 @@ class DemandeCongeController extends Controller
         $demand = DemandeConge::where('id', $request['data']['id'])->first();
         $demand->etat_demande_id = self::getEtatDemande('validated by head of operational excellence');
         self::setDateValidation($request['data'], $demand);
+        $demand->prochain_validateur = $request['data']['prochain_validateur'];
         $demand->save();
         return $demand;
     }
@@ -985,6 +1055,7 @@ class DemandeCongeController extends Controller
         $demand = DemandeConge::where('id', $request['data']['id'])->first();
         $demand->etat_demande_id = self::getEtatDemande('closed');
         self::setDateValidation($request['data'], $demand);
+        $demand->prochain_validateur = $request['data']['prochain_validateur'];
         $demand->save();
         return $demand;
     }
@@ -994,6 +1065,7 @@ class DemandeCongeController extends Controller
         $demand = DemandeConge::where('id', $request['data']['id'])->first();
         $demand->etat_demande_id = self::getEtatDemande('validated by director');
         self::setDateValidation($request['data'], $demand);
+        $demand->prochain_validateur = $request['data']['prochain_validateur'];
         $demand->save();
         return $demand;
     }
@@ -1003,6 +1075,7 @@ class DemandeCongeController extends Controller
         $demand = DemandeConge::where('id', $request['data']['id'])->first();
         $demand->etat_demande_id = self::getEtatDemande('validated by coordinateur qualite formation');
         self::setDateValidation($request['data'], $demand);
+        $demand->prochain_validateur = $request['data']['prochain_validateur'];
         $demand->save();
         return $demand;
     }
@@ -1012,6 +1085,7 @@ class DemandeCongeController extends Controller
         $demand = DemandeConge::where('id', $request['data']['id'])->first();
         $demand->etat_demande_id = self::getEtatDemande('validated by responsable qualite formation');
         self::setDateValidation($request['data'], $demand);
+        $demand->prochain_validateur = $request['data']['prochain_validateur'];
         $demand->save();
         return $demand;
     }
@@ -1022,7 +1096,7 @@ class DemandeCongeController extends Controller
         return DemandeCongeLogs::where('user_id', $user->id)->whereNotNull('modification_solde_comment_id')->orderBy('id', 'desc')->paginate();
     }
 
-    protected static function filterNulls($val)
+    public static function filterNulls($val)
     {
         return !is_null($val);
     }
@@ -1056,7 +1130,7 @@ class DemandeCongeController extends Controller
         return $user;
     }
 
-    protected static function getCCIIds()
+    public static function getCCIIds()
     {
         return User::where('role_id', Role::where('name', 'like', "%incoh%")->first()->id)->pluck('id')->toArray();
     }
@@ -1066,7 +1140,7 @@ class DemandeCongeController extends Controller
         return EtatDemandeConge::where('etat_demande', 'like', $string)->first()->id;
     }
 
-    protected static function getResponsableITIds($roles)
+    public static function getResponsableITIds($roles)
     {
         if ($roles === "roles") {
             return self::getDataByType('getResponsableITIds', "", true);
@@ -1074,7 +1148,7 @@ class DemandeCongeController extends Controller
         return self::getDataByType('getResponsableITIds', "");
     }
 
-    protected static function getResponsableMGIds($roles)
+    public static function getResponsableMGIds($roles)
     {
         if ($roles === "roles") {
             return self::getDataByType('getResponsableMGIds', "", true);
@@ -1082,7 +1156,7 @@ class DemandeCongeController extends Controller
         return self::getDataByType('getResponsableMGIds', "");
     }
 
-    protected static function getInfirmiereTravailIds($roles)
+    public static function getInfirmiereTravailIds($roles)
     {
         if ($roles === "roles") {
             return self::getDataByType('getInfirmiereTravailIds', "", true);
@@ -1090,7 +1164,7 @@ class DemandeCongeController extends Controller
         return self::getDataByType('getInfirmiereTravailIds', "");
     }
 
-    protected static function getChargeMissionAupresDirectionIds($roles)
+    public static function getChargeMissionAupresDirectionIds($roles)
     {
         if ($roles === "roles") {
             return self::getDataByType('getChargeMissionAupresDirectionIds', "", true);
@@ -1098,7 +1172,7 @@ class DemandeCongeController extends Controller
         return self::getDataByType('getChargeMissionAupresDirectionIds', "");
     }
 
-    protected static function getChargeCommMktgIds($roles)
+    public static function getChargeCommMktgIds($roles)
     {
         if ($roles === "roles") {
             return self::getDataByType('getChargeCommMktgIds', "", true);
@@ -1106,7 +1180,7 @@ class DemandeCongeController extends Controller
         return self::getDataByType('getChargeCommMktgIds', "");
     }
 
-    protected static function getDeveloperIds($roles)
+    public static function getDeveloperIds($roles)
     {
         if ($roles === "roles") {
             return self::getDataByType('getDeveloperIds', "", true);
@@ -1114,7 +1188,7 @@ class DemandeCongeController extends Controller
         return self::getDataByType('getDeveloperIds', "");
     }
 
-    protected static function getAgentMGIds($roles)
+    public static function getAgentMGIds($roles)
     {
         if ($roles === "roles") {
             return self::getDataByType('getAgentMGIds', "", true);
@@ -1122,7 +1196,7 @@ class DemandeCongeController extends Controller
         return self::getDataByType("getAgentMGIds", "");
     }
 
-    protected static function getSupervisorIds($roles)
+    public static function getSupervisorIds($roles)
     {
         $role_id = Role::where('name', 'superviseur')->first()->id;
         if ($roles === 'roles') {
@@ -1144,7 +1218,7 @@ class DemandeCongeController extends Controller
      * @param $type_conge
      * @return mixed
      */
-    protected static function getTypeCongeId($type_conge)
+    public static function getTypeCongeId($type_conge)
     {
         return TypeConge::where('name', 'like', $type_conge)->first()->id;
     }
@@ -1198,7 +1272,7 @@ class DemandeCongeController extends Controller
         return $role_id === Role::where('name', 'like', "coordinateur %")->where('name', 'like', "%qualite%")->where('name', 'like', "%formation")->first()->id;
     }
 
-    protected static function getCoordinatorQualiteFormationIds($roles)
+    public static function getCoordinatorQualiteFormationIds($roles)
     {
         if ($roles === "roles") {
             return self::getDataByType('getCoordinatorQualiteFormationIds', "", true);
@@ -1267,7 +1341,7 @@ class DemandeCongeController extends Controller
         }
     }
 
-    private static function isResponsableQualiteFormation($role_id)
+    public static function isResponsableQualiteFormation($role_id)
     {
         return $role_id === Role::where('name', 'like', "responsable%")->where('name', 'like', "%qualit%")->where('name', 'like', "%formation%")->first()->id;
     }
@@ -1309,7 +1383,7 @@ class DemandeCongeController extends Controller
      * @param $demand
      * @return void
      */
-    protected static function setDateValidation($data, $demand): void
+    public static function setDateValidation($data, $demand): void
     {
         $date_validation_number = intval($data['date_validation_number']);
         if ($date_validation_number === 1) {
@@ -1322,5 +1396,588 @@ class DemandeCongeController extends Controller
             $demand->date_validation_niveau_4 = $data['date_validation'];
         }
         $demand->save();
+    }
+
+    private static function getProchainsValidateursNames($profiles, $user)
+    {
+        $role_id = $user->role_id;
+        $names = [];
+        $supervisor_required = self::isRequired($profiles, "superviseur");
+        $agent_wfm_required = self::isRequired($profiles, "agent wfm");
+        $ops_manager_required = self::isRequired($profiles, "ops manager");
+        $charge_rh_required = self::isRequired($profiles, "charge rh");
+        $resp_rh_required = self::isRequired($profiles, "resp rh");
+        $directeur_required = self::isRequired($profiles, "directeur");
+        $resp_wfm_required = self::isRequired($profiles, "resp wfm");
+        $resp_it_required = self::isRequired($profiles, "resp it");
+        $coordinateur_qualite_formation_required = self::isRequired($profiles, "coordinateur qualite formation");
+        $responsable_qualite_formation_required = self::isRequired($profiles, "responsable qualite formation");
+        if (self::isAgent($role_id)) {
+            $names = self::getNamesJob("getNamesIfAgent", array($supervisor_required, $user, $names, $agent_wfm_required, $ops_manager_required, $charge_rh_required, $resp_rh_required), $user);
+        } else if (self::isSupervisor($role_id)) {
+            $names = self::getNamesJob("getNamesIfSupervisor", array($ops_manager_required, $user, $names, $directeur_required, $agent_wfm_required, $charge_rh_required, $resp_wfm_required, $resp_rh_required), $user);
+        } else if (self::isOpsManager($role_id)) {
+            $names = self::getNamesIfOpsManager($directeur_required, $user, $names, $resp_rh_required);
+        } else if (self::isResponsableRH($role_id)) {
+            $names = self::getNamesIfRespRH($directeur_required, $user, $names);
+        } else if (self::isWFMCoordinator($role_id)) {
+            $names = self::getNamesIfWFMCoordinator($directeur_required, $user, $names, $resp_rh_required);
+        } else if (self::isITAgent($role_id)) {
+            $names = self::getNamesIfITAgent($resp_it_required, $user, $names, $charge_rh_required);
+        } else if (self::isITResponsable($role_id)) {
+            $names = self::getNamesIfITResponsable($directeur_required, $user, $names, $resp_rh_required);
+        } else if (self::isCPS($role_id) or self::isVigie($role_id)) {
+            $names = self::getNamesIfWFMAgent($resp_wfm_required, $user, $names, $directeur_required, $charge_rh_required, $resp_rh_required);
+        } else if (self::isAgentMG($role_id)) {
+            $names = self::getNamesIfAgentMG($resp_rh_required, $user, $names);
+        } else if (self::isRespMG($role_id)) {
+            $names = self::getNamesIfRespMG($directeur_required, $user, $names, $resp_rh_required);
+        } else if (self::isChargeFormation($role_id)) {
+            $names = self::getNamesIfChargeFormation($coordinateur_qualite_formation_required, $user, $names, $responsable_qualite_formation_required, $charge_rh_required, $resp_rh_required);
+        } else if (self::isCoordinatorQualiteFormation($role_id)) {
+            $names = self::getNamesIfCoordinatorQualiteFormation($directeur_required, $user, $names, $resp_rh_required);
+        } else if (self::isResponsableQualiteFormation($role_id)) {
+            $names = self::getNamesIfResponsableQualiteFormation($directeur_required, $user, $names, $resp_rh_required);
+        } else if (self::isChargeRH($role_id)) {
+            $names = self::getNamesIfChargeRH($resp_rh_required, $user, $names, $directeur_required);
+        } else if (self::isInfirmiereDeTravail($role_id)) {
+            $names = self::getNamesIfInfirmiereDeTravail($directeur_required, $user, $names);
+        } else if (self::isChargeMissionAupresDirection($role_id)) {
+            $names = self::getNamesIfChargeMissionAupresDirection($directeur_required, $user, $names, $resp_rh_required);
+        } else if (self::isChargeQualiteProcess($role_id)) {
+            $names = self::getNamesIfChargeQualiteProcess($coordinateur_qualite_formation_required, $user, $names, $responsable_qualite_formation_required, $charge_rh_required, $resp_rh_required);
+        } else if (self::isDataProtectionOfficer($role_id)) {
+            $names = self::getNamesIfDataProtectionOfficer($directeur_required, $user, $names, $resp_rh_required);
+        } else if (self::isChargeCommMarketing($role_id)) {
+            $names = self::getNamesIfChargeCommMarketing($directeur_required, $user, $names, $charge_rh_required);
+        } else if (self::isChargeRecrutement($role_id)) {
+            $names = self::getNamesIfChargeRecrutement($responsable_qualite_formation_required, $user, $names, $resp_rh_required);
+        }
+        return $names;
+    }
+
+    public static function getDirectorIds($roles)
+    {
+        if ($roles === "roles") {
+            return self::getDataByType('getDirectorIds', "", true);
+        }
+        return self::getDataByType('getDirectorIds', '');
+    }
+
+    private static function getUsersIdsFromOperations($operations, $user_ids)
+    {
+        $users = User::whereIn('id', $user_ids)->get();
+        $users_for_operations = array();
+        foreach ($users as $user) {
+            if ($user->operations) {
+                foreach ($user->operations as $operation) {
+                    if (in_array($operation->id, $operations->pluck('id')->toArray())) {
+                        if ($user) {
+                            $users_for_operations[] = $user->id;
+                        }
+                    }
+                }
+            }
+        }
+        return $users_for_operations;
+    }
+
+    /**
+     * @param $user
+     * @param array $names
+     * @return array
+     */
+    public static function getNames($user, $users_ids): array
+    {
+        $names = [];
+        $users = User::whereIn('id', $users_ids)->get();
+        foreach ($users as $user_from_users) {
+            $names[] = $user_from_users->first_name . ' ' . $user_from_users->last_name;
+        }
+        return $names;
+    }
+
+    /**
+     * @param $profiles
+     * @param bool $charge_rh_required
+     * @return bool
+     */
+    public static function isRequired($profiles, $profile): bool
+    {
+        $is_required = false;
+        if (gettype($profile) === "array") {
+            if (in_array($profile, $profiles)) {
+                $is_required = true;
+            }
+        } else if ($profiles === $profile) {
+            $is_required = true;
+        }
+        return $is_required;
+    }
+
+    /**
+     * @param bool $supervisor_required
+     * @param $user
+     * @param array $names
+     * @param bool $agent_wfm_required
+     * @param bool $ops_manager_required
+     * @param bool $charge_rh_required
+     * @param bool $resp_rh_required
+     * @return string
+     */
+    public static function getNamesIfAgent(bool $supervisor_required, $user, array $names, bool $agent_wfm_required, bool $ops_manager_required, bool $charge_rh_required, bool $resp_rh_required)
+    {
+        $names[] = self::getSupervisorNamesIfRequired($supervisor_required, $user);
+        $names[] = self::getAgentWFMNamesIfRequired($agent_wfm_required, $user);
+        $names[] = self::getOpsManagersNamesIfRequired($ops_manager_required, $user);
+        $names[] = self::getChargeRHNamesIfRequired($charge_rh_required, $user);
+        $names[] = self::getRespRHNamesIfRequired($resp_rh_required, $user);
+        Redis::set('getNamesIfAgent'.'.'.$user->id, json_encode(self::getNamesStringFromArray($names)));
+    }
+
+    public static function getNamesJob($job, $input, $user)
+    {
+        if ($job === "getNamesIfAgent") {
+            dispatch(function () use ($input) { self::getNamesIfAgent($input[0], $input[1], $input[2], $input[3], $input[4], $input[5], $input[6]); });
+        } else if ($job === "getNamesIfSupervisor") {
+            dispatch(function () use ($input) {self::getNamesIfSupervisor($input[0], $input[1], $input[2], $input[3], $input[4], $input[5], $input[6], $input[7]);});
+        }
+        return Redis::get($job.'.'.$user->id);
+    }
+
+    public static function getProfileNamesIfRequired(bool $is_required, $names, $profile_name)
+    {
+        $obj = new StdClass();
+        $obj->role = "";
+        $obj->names = array();
+        if ($is_required) {
+            $obj->role = $profile_name;
+            $obj->names = $names;
+        }
+        return $obj;
+    }
+
+    /**
+     * @param bool $ops_manager_required
+     * @param $user
+     * @param array $names
+     * @return stdClass
+     */
+    public static function getOpsManagersNamesIfRequired(bool $ops_manager_required, $user)
+    {
+        $obj = new StdClass();
+        $obj->role = "";
+        $obj->names = array();
+        if ($ops_manager_required) {
+            $obj->role = "ops manager";
+            $obj->names = self::getNames($user, self::getUsersIdsFromOperations($user->operations, self::getOpsManagersIds('')));
+        }
+        return $obj;
+    }
+
+    /**
+     * @param bool $supervisor_required
+     * @param $user
+     * @return stdClass
+     */
+    public static function getSupervisorNamesIfRequired(bool $supervisor_required, $user): stdClass
+    {
+        $obj = new StdClass();
+        $obj->role = "";
+        $obj->names = array();
+        if ($supervisor_required) {
+            $obj->role = "superviseurs";
+            $obj->names = self::getNames($user, $user->managers->pluck('id')->toArray());
+        }
+        return $obj;
+    }
+
+    /**
+     * @param bool $agent_wfm_required
+     * @param $user
+     * @return stdClass
+     */
+    public static function getAgentWFMNamesIfRequired(bool $agent_wfm_required, $user): stdClass
+    {
+        $obj = new StdClass();
+        $obj->role = "";
+        $obj->names = array();
+        if ($agent_wfm_required) {
+            $obj->role = "agents wfm";
+            $obj->names = self::getNames($user, self::getUsersIdsFromOperations($user->operations, self::getWFMAgentsIds()));
+        }
+        return $obj;
+    }
+
+    /**
+     * @param bool $charge_rh_required
+     * @param $user
+     * @return stdClass
+     */
+    public static function getChargeRHNamesIfRequired(bool $charge_rh_required, $user): stdClass
+    {
+        $obj = new StdClass();
+        $obj->role = "";
+        $obj->names = array();
+        if ($charge_rh_required) {
+            $obj->role = "charge rh";
+            $obj->names = self::getNames($user, self::getChargeRHIds(''));
+        }
+        return $obj;
+    }
+
+    /**
+     * @param bool $resp_rh_required
+     * @param $user
+     * @return stdClass
+     */
+    public static function getRespRHNamesIfRequired(bool $resp_rh_required, $user)
+    {
+        $obj = new StdClass();
+        $obj->role = "";
+        $obj->names = array();
+        if ($resp_rh_required) {
+            $obj->role = "resp rh";
+            $obj->names = self::getNames($user, self::getResponsableHRIds(''));
+        }
+        return $obj;
+    }
+
+    /**
+     * @param array $names
+     * @return string
+     */
+    public static function getNamesStringFromArray(array $names): string
+    {
+        $namesOutput = "";
+        if (!empty($names)) {
+            foreach ($names as $name) {
+                $namesOutput .= "- " . $name->role . " :\n";
+                foreach ($name->names as $nameFromObj) {
+                    $namesOutput .= $nameFromObj . "\n";
+                }
+            }
+        }
+        return $namesOutput;
+    }
+
+    /**
+     * @param bool $ops_manager_required
+     * @param $user
+     * @param array $names
+     * @param bool $directeur_required
+     * @param bool $agent_wfm_required
+     * @param bool $charge_rh_required
+     * @param bool $resp_wfm_required
+     * @param bool $resp_rh_required
+     * @return string
+     */
+    public static function getNamesIfSupervisor(bool $ops_manager_required, $user, array $names, bool $directeur_required, bool $agent_wfm_required, bool $charge_rh_required, bool $resp_wfm_required, bool $resp_rh_required)
+    {
+        $names[] = self::getOpsManagersNamesIfRequired($ops_manager_required, $user);
+        $names[] = self::getProfileNamesIfRequired($directeur_required, self::getDirectorNames($user), "directeur");
+        $names[] = self::getProfileNamesIfRequired($agent_wfm_required, self::getWFMAgentsNames($user), "agents wfm");
+        $names[] = self::getProfileNamesIfRequired($charge_rh_required, self::getChargeRHNames($user), "charge rh");
+        $names[] = self::getProfileNamesIfRequired($resp_wfm_required, self::getWFMCoordinatorsNames($user), "resp wfm");
+        $names[] = self::getProfileNamesIfRequired($resp_rh_required, self::getResponsableRHNames($user), "resp rh");
+        return self::getNamesStringFromArray($names);
+    }
+
+    public static function getResponsableRHNames($user)
+    {
+        return self::getNames($user, self::getResponsableHRIds(''));
+    }
+
+    public static function getWFMCoordinatorsNames($user)
+    {
+        return self::getNames($user, self::getUsersIdsFromOperations($user->operations, self::getWFMCoordinatorIds('')));
+    }
+
+    public static function getChargeRHNames($user)
+    {
+        return self::getNames($user, self::getChargeRHIds(''));
+    }
+
+    public static function getWFMAgentsNames($user)
+    {
+        return self::getNames($user, self::getUsersIdsFromOperations($user->operations, self::getWFMAgentsIds()));
+    }
+
+    public static function getDirectorNames($user)
+    {
+        return self::getNames($user, self::getDirectorIds(''));
+    }
+
+    /**
+     * @param bool $directeur_required
+     * @param $user
+     * @param array $names
+     * @param bool $resp_rh_required
+     * @return string
+     */
+    public static function getNamesIfOpsManager(bool $directeur_required, $user, array $names, bool $resp_rh_required)
+    {
+        $names[] = self::getProfileNamesIfRequired($directeur_required, self::getDirectorNames($user), "directeur");
+        $names[] = self::getProfileNamesIfRequired($resp_rh_required, self::getResponsableRHNames($user), "resp rh");
+        return self::getNamesStringFromArray($names);
+    }
+
+    /**
+     * @param bool $directeur_required
+     * @param $user
+     * @param array $names
+     * @return string
+     */
+    public static function getNamesIfRespRH(bool $directeur_required, $user, array $names)
+    {
+        $names[] = self::getProfileNamesIfRequired($directeur_required, self::getDirectorNames($user), "directeur");
+        return self::getNamesStringFromArray($names);
+    }
+
+    /**
+     * @param bool $directeur_required
+     * @param $user
+     * @param array $names
+     * @param bool $resp_rh_required
+     * @return string
+     */
+    public static function getNamesIfWFMCoordinator(bool $directeur_required, $user, array $names, bool $resp_rh_required): string
+    {
+        $names[] = self::getProfileNamesIfRequired($directeur_required, self::getDirectorNames($user), "directeur");
+        $names[] = self::getProfileNamesIfRequired($resp_rh_required, self::getResponsableRHNames($user), "resp rh");
+        return self::getNamesStringFromArray($names);
+    }
+
+    private static function getRespITNames($user)
+    {
+        return self::getNames($user, self::getResponsableITIds(''));
+    }
+
+    /**
+     * @param bool $resp_it_required
+     * @param $user
+     * @param array $names
+     * @param bool $charge_rh_required
+     * @return string
+     */
+    public static function getNamesIfITAgent(bool $resp_it_required, $user, array $names, bool $charge_rh_required): string
+    {
+        $names[] = self::getProfileNamesIfRequired($resp_it_required, self::getRespITNames($user), 'resp it');
+        $names[] = self::getProfileNamesIfRequired($charge_rh_required, self::getChargeRHNames($user), 'charge rh');
+        return self::getNamesStringFromArray($names);
+    }
+
+    /**
+     * @param bool $directeur_required
+     * @param $user
+     * @param array $names
+     * @param bool $resp_rh_required
+     * @return string
+     */
+    public static function getNamesIfITResponsable(bool $directeur_required, $user, array $names, bool $resp_rh_required): string
+    {
+        $names[] = self::getProfileNamesIfRequired($directeur_required, self::getDirectorNames($user), "directeur");
+        $names[] = self::getProfileNamesIfRequired($resp_rh_required, self::getResponsableRHNames($user), "resp rh");
+        return self::getNamesStringFromArray($names);
+    }
+
+    /**
+     * @param bool $resp_wfm_required
+     * @param $user
+     * @param array $names
+     * @param bool $directeur_required
+     * @param bool $charge_rh_required
+     * @param bool $resp_rh_required
+     * @return string
+     */
+    public static function getNamesIfWFMAgent(bool $resp_wfm_required, $user, array $names, bool $directeur_required, bool $charge_rh_required, bool $resp_rh_required): string
+    {
+        $names[] = self::getProfileNamesIfRequired($resp_wfm_required, self::getWFMCoordinatorsNames($user), "resp wfm");
+        $names[] = self::getProfileNamesIfRequired($directeur_required, self::getDirectorNames($user), "directeur");
+        $names[] = self::getProfileNamesIfRequired($charge_rh_required, self::getChargeRHNames($user), "charge rh");
+        $names[] = self::getProfileNamesIfRequired($resp_rh_required, self::getResponsableRHNames($user), "resp rh");
+        return self::getNamesStringFromArray($names);
+    }
+
+    /**
+     * @param bool $resp_rh_required
+     * @param $user
+     * @param array $names
+     * @return string
+     */
+    public static function getNamesIfAgentMG(bool $resp_rh_required, $user, array $names): string
+    {
+        $names[] = self::getProfileNamesIfRequired($resp_rh_required, self::getResponsableRHNames($user), "resp rh");
+        return self::getNamesStringFromArray($names);
+    }
+
+    /**
+     * @param bool $directeur_required
+     * @param $user
+     * @param array $names
+     * @param bool $resp_rh_required
+     * @return string
+     */
+    public static function getNamesIfRespMG(bool $directeur_required, $user, array $names, bool $resp_rh_required): string
+    {
+        $names[] = self::getProfileNamesIfRequired($directeur_required, self::getDirectorNames($user), "directeur");
+        $names[] = self::getProfileNamesIfRequired($resp_rh_required, self::getResponsableRHNames($user), "resp rh");
+        return self::getNamesStringFromArray($names);
+    }
+
+    private static function getCoordinatorQualiteFormationNames($user)
+    {
+        return self::getNames($user, self::getCoordinatorQualiteFormationIds(''));
+    }
+
+    private static function getResponsableQualiteFormationNames($user)
+    {
+        return self::getNames($user, self::getResponsableQualiteFormationNames(''));
+    }
+
+    /**
+     * @param bool $coordinateur_qualite_formation_required
+     * @param $user
+     * @param array $names
+     * @param bool $responsable_qualite_formation_required
+     * @param bool $charge_rh_required
+     * @param bool $resp_rh_required
+     * @return string
+     */
+    public static function getNamesIfChargeFormation(bool $coordinateur_qualite_formation_required, $user, array $names, bool $responsable_qualite_formation_required, bool $charge_rh_required, bool $resp_rh_required): string
+    {
+        $names[] = self::getProfileNamesIfRequired($coordinateur_qualite_formation_required, self::getCoordinatorQualiteFormationNames($user), "coordinateur qualite formation");
+        $names[] = self::getProfileNamesIfRequired($responsable_qualite_formation_required, self::getResponsableQualiteFormationNames($user), "responsable qualite formation");
+        $names[] = self::getProfileNamesIfRequired($charge_rh_required, self::getChargeRHNames($user), "charge rh");
+        $names[] = self::getProfileNamesIfRequired($resp_rh_required, self::getResponsableRHNames($user), "resp rh");
+        return self::getNamesStringFromArray($names);
+    }
+
+    /**
+     * @param bool $directeur_required
+     * @param $user
+     * @param array $names
+     * @param bool $resp_rh_required
+     * @return string
+     */
+    public static function getNamesIfCoordinatorQualiteFormation(bool $directeur_required, $user, array $names, bool $resp_rh_required): string
+    {
+        $names[] = self::getProfileNamesIfRequired($directeur_required, self::getDirectorNames($user), 'directeur');
+        $names[] = self::getProfileNamesIfRequired($resp_rh_required, self::getResponsableRHNames($user), 'resp rh');
+        return self::getNamesStringFromArray($names);
+    }
+
+    /**
+     * @param bool $directeur_required
+     * @param $user
+     * @param array $names
+     * @param bool $resp_rh_required
+     * @return string
+     */
+    public static function getNamesIfResponsableQualiteFormation(bool $directeur_required, $user, array $names, bool $resp_rh_required): string
+    {
+        $names[] = self::getProfileNamesIfRequired($directeur_required, self::getDirectorNames($user), "directeur");
+        $names[] = self::getProfileNamesIfRequired($resp_rh_required, self::getResponsableRHNames($user), "resp rh");
+        return self::getNamesStringFromArray($names);
+    }
+
+    /**
+     * @param bool $resp_rh_required
+     * @param $user
+     * @param array $names
+     * @param bool $directeur_required
+     * @return string
+     */
+    public static function getNamesIfChargeRH(bool $resp_rh_required, $user, array $names, bool $directeur_required): string
+    {
+        $names[] = self::getProfileNamesIfRequired($resp_rh_required, self::getResponsableRHNames($user), "resp rh");
+        $names[] = self::getProfileNamesIfRequired($directeur_required, self::getDirectorNames($user), "directeur");
+        return self::getNamesStringFromArray($names);
+    }
+
+    /**
+     * @param bool $directeur_required
+     * @param $user
+     * @param array $names
+     * @return string
+     */
+    public static function getNamesIfInfirmiereDeTravail(bool $directeur_required, $user, array $names): string
+    {
+        $names[] = self::getProfileNamesIfRequired($directeur_required, self::getDirectorNames($user), "directeur");
+        return self::getNamesStringFromArray($names);
+    }
+
+    /**
+     * @param bool $directeur_required
+     * @param $user
+     * @param array $names
+     * @param bool $resp_rh_required
+     * @return string
+     */
+    public static function getNamesIfChargeMissionAupresDirection(bool $directeur_required, $user, array $names, bool $resp_rh_required): string
+    {
+        $names[] = self::getProfileNamesIfRequired($directeur_required, self::getDirectorNames($user), "directeur");
+        $names[] = self::getProfileNamesIfRequired($resp_rh_required, self::getResponsableRHNames($user), "resp rh");
+        return self::getNamesStringFromArray($names);
+    }
+
+    /**
+     * @param bool $coordinateur_qualite_formation_required
+     * @param $user
+     * @param array $names
+     * @param bool $responsable_qualite_formation_required
+     * @param bool $charge_rh_required
+     * @param bool $resp_rh_required
+     * @return string
+     */
+    public static function getNamesIfChargeQualiteProcess(bool $coordinateur_qualite_formation_required, $user, array $names, bool $responsable_qualite_formation_required, bool $charge_rh_required, bool $resp_rh_required): string
+    {
+        $names[] = self::getProfileNamesIfRequired($coordinateur_qualite_formation_required, self::getCoordinatorQualiteFormationNames($user), "coordinateur qualite formation");
+        $names[] = self::getProfileNamesIfRequired($responsable_qualite_formation_required, self::getResponsableQualiteFormationNames($user), "responsable qualite formation");
+        $names[] = self::getProfileNamesIfRequired($charge_rh_required, self::getChargeRHNames($user), "charge rh");
+        $names[] = self::getProfileNamesIfRequired($resp_rh_required, self::getResponsableRHNames($user), "resp rh");
+        return self::getNamesStringFromArray($names);
+    }
+
+    /**
+     * @param bool $directeur_required
+     * @param $user
+     * @param array $names
+     * @param bool $resp_rh_required
+     * @return string
+     */
+    public static function getNamesIfDataProtectionOfficer(bool $directeur_required, $user, array $names, bool $resp_rh_required): string
+    {
+        $names[] = self::getProfileNamesIfRequired($directeur_required, self::getDirectorNames($user), "directeur");
+        $names[] = self::getProfileNamesIfRequired($resp_rh_required, self::getResponsableRHNames($user), "resp rh");
+        return self::getNamesStringFromArray($names);
+    }
+
+    /**
+     * @param bool $directeur_required
+     * @param $user
+     * @param array $names
+     * @param bool $charge_rh_required
+     * @return string
+     */
+    public static function getNamesIfChargeCommMarketing(bool $directeur_required, $user, array $names, bool $charge_rh_required): string
+    {
+        $names[] = self::getProfileNamesIfRequired($directeur_required, self::getDirectorNames($user), "directeur");
+        $names[] = self::getProfileNamesIfRequired($charge_rh_required, self::getChargeRHNames($user), "charge rh");
+        return self::getNamesStringFromArray($names);
+    }
+
+    /**
+     * @param bool $responsable_qualite_formation_required
+     * @param $user
+     * @param array $names
+     * @param bool $resp_rh_required
+     * @return string
+     */
+    public static function getNamesIfChargeRecrutement(bool $responsable_qualite_formation_required, $user, array $names, bool $resp_rh_required): string
+    {
+        $names[] = self::getProfileNamesIfRequired($responsable_qualite_formation_required, self::getResponsableQualiteFormationNames($user), 'responsable qualite formation');
+        $names[] = self::getProfileNamesIfRequired($resp_rh_required, self::getResponsableRHNames($user), 'resp rh');
+        return self::getNamesStringFromArray($names);
     }
 }
